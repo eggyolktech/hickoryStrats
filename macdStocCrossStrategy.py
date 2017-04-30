@@ -159,12 +159,13 @@ if __name__ == "__main__":
     fig = plt.figure(figsize=(15, 20))
     #fig = plt.figure()
     fig.patch.set_facecolor('white')     # Set the outer colour to white
+
     #ax1 = fig.add_subplot(211,  ylabel='Price in $')
-    ax1 = plt.subplot2grid((8, 1), (0, 0), rowspan=4, ylabel='Price in $')
+    ax1 = plt.subplot2grid((9, 1), (0, 0), rowspan=4, ylabel='Price in $')
 
     # Plot the AAPL closing price overlaid with the moving averages
-    bars['Close'].plot(ax=ax1, color='r', lw=2., linewidth=1)
-    signals[['short_mavg', 'long_mavg']].plot(ax=ax1, lw=2., linewidth=1)
+    bars['Close'].plot(ax=ax1, color='r', lw=1.)
+    signals[['short_mavg', 'long_mavg']].plot(ax=ax1, lw=1.)
 
     # Plot the "buy" trades against AAPL
     ax1.plot(signals.ix[signals.positions == 1.0].index, 
@@ -179,22 +180,49 @@ if __name__ == "__main__":
     #myFmt = mdates.DateFormatter('%Y-%m')
     #ax1.xaxis.set_major_formatter(myFmt)    
     
+    # Set the tick labels font
+    for label in (ax1.get_xticklabels() + ax1.get_yticklabels()):
+        label.set_fontname('Arial')
+        label.set_fontsize(8)
+        label.set_rotation(0)
+    
     ax1.axes.xaxis.label.set_visible(False)
     ax1.grid(True)
     
     # Plot the Slow Stoc
-    ax2 = plt.subplot2grid((8, 1), (5, 0), ylabel='Slow Stoc')
+    ax2 = plt.subplot2grid((9, 1), (4, 0), rowspan=2, ylabel='Slow Stoc')
     ax2.axes.xaxis.set_visible(False)
-    signals[['k_slow', 'd_slow']].plot(ax=ax2, lw=2., grid=True, legend=None, linewidth=1)
+    signals[['k_slow', 'd_slow']].plot(ax=ax2, lw=1., grid=True, legend=None)
+    ax2.axhline(y = 80, color = "brown", lw = 0.5)
+    ax2.axhline(y = 20, color = "red", lw = 0.5)    
  
     # Plot the MACD
-    ax3 = plt.subplot2grid((8, 1), (6, 0), ylabel='MACD')
+    ax3 = plt.subplot2grid((9, 1), (6, 0), rowspan=2, ylabel='MACD')
     ax3.axes.xaxis.set_visible(False)
-    signals[['MACD', 'emaSmooth', 'divergence']].plot(ax=ax3, lw=2., grid=True, legend=None, linewidth=1) 
     
+    signals[['MACD', 'emaSmooth']].plot(x=signals.index, ax=ax3, lw=1., grid=True, legend=None)
+    signals[['divergence']].plot(x=signals.index, ax=ax3, lw=0.1, grid=True, legend=None)
+    
+    ax3.fill_between(signals.index, signals['divergence'], 0,
+                where=signals['divergence'] >= 0,
+                facecolor='blue', alpha=.8, interpolate=True)
+                
+    ax3.fill_between(signals.index, signals['divergence'], 0,
+                where=signals['divergence'] < 0,
+                facecolor='red', alpha=.8, interpolate=True)
+    
+    #signals[['divergence']].plot(x=signals.index.values, ax=ax3, kind='bar', lw=1.) 
+    #signals[['MACD']].plot(x=signals.index.values, ax=ax3, lw=1.)  
+    #signals[['emaSmooth']].plot(x=signals.index.values, ax=ax3, lw=1.)  
+    
+    #print(signals[['divergence']].tail())
+    #print(signals[['MACD']].tail())
+    #print(signals[['emaSmooth']].tail())
+     
+
     # Plot the equity curve in dollars
-    ax4 = plt.subplot2grid((8, 1), (7, 0), ylabel='Portfolio in $')
-    pf['total'].plot(ax=ax4, lw=2., grid=True, legend=None, linewidth=1)
+    ax4 = plt.subplot2grid((9, 1), (8, 0), ylabel='Portfolio')
+    pf['total'].plot(ax=ax4, lw=1., grid=True, legend=None)
 
     # Plot the "buy" and "sell" trades against the equity curve
     ax4.plot(pf.ix[signals.positions == 1.0].index, 
@@ -216,5 +244,5 @@ if __name__ == "__main__":
 
     # Plot the figure
     #fig.show(block=True)
-    #plt.tight_layout()
+    plt.tight_layout(h_pad=3)
     plt.show()

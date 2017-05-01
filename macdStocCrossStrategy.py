@@ -34,15 +34,7 @@ class MacdStocCrossStrategy(Strategy):
         signals['short_mavg'] = pd.rolling_mean(self.bars['Close'], self.short_window, min_periods=1)
         signals['long_mavg'] = pd.rolling_mean(self.bars['Close'], self.long_window, min_periods=1)
         
-        #sma = self.simple_moving_average(self.bars['Close'])
-        
-        #print(str(len(signals['long_mavg'])))
-        #print(str(len(sma)))
-        
         slowstoc = self.slow_stochastic(self.bars['Low'], self.bars['High'], self.bars['Close'], period=16, smoothing=8)
-        #print(str(len(signals['long_mavg'])))
-        #print(str(len(slowstoc[0])))
-        #print(str(len(slowstoc[1])))
         
         signals['k_slow'] = slowstoc[0]
         signals['d_slow'] = slowstoc[1]
@@ -50,8 +42,6 @@ class MacdStocCrossStrategy(Strategy):
         macd = self.moving_average_convergence(self.bars['Close'])
         
         signals = pd.concat([signals, macd], axis=1)
-        
-        print(signals.tail())
         
         #        result = pd.DataFrame({'MACD': emafast-emaslow, 'emaSlw': emaslow, 'emaFst': emafast})
         
@@ -63,6 +53,10 @@ class MacdStocCrossStrategy(Strategy):
         # Take the difference of the signals in order to generate actual trading orders
         signals['positions'] = signals['signal'].diff()   
 
+        #print(signals.head())
+        print("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXx")
+        print(signals)
+        
         return signals
         
     def simple_moving_average(self, prices, period=26):
@@ -142,8 +136,12 @@ if __name__ == "__main__":
 
     # Obtain daily bars of AAPL from Yahoo Finance for the period
     # 1st Jan 1990 to 1st Jan 2002 - This is an example from ZipLine
-    symbol = 'AAPL'
-    bars = web.DataReader(symbol, "yahoo", datetime.datetime(2016, 5, 1), datetime.datetime(2017, 4, 30))
+    start = datetime.datetime(2016,4,1)
+    end = datetime.date.today()
+    
+    #symbol = 'GOOG'
+    symbol = '0005.HK'
+    bars = web.DataReader(symbol, "yahoo", start, end)
 
     # Create a Moving Average Cross Strategy instance with a short moving
     # average window of 100 days and a long window of 400 days
@@ -154,11 +152,12 @@ if __name__ == "__main__":
     portfolio = MarketOnClosePortfolio(symbol, bars, signals, initial_capital=100000.0)
     pf = portfolio.backtest_portfolio()
 
-    print(bars.tail())
+    #print(bars.tail())
     
     fig = plt.figure(figsize=(15, 20))
     #fig = plt.figure()
     fig.patch.set_facecolor('white')     # Set the outer colour to white
+    fig.suptitle(symbol, fontsize=20, color='grey')
 
     #ax1 = fig.add_subplot(211,  ylabel='Price in $')
     ax1 = plt.subplot2grid((9, 1), (0, 0), rowspan=4, ylabel='Price in $')
@@ -168,6 +167,8 @@ if __name__ == "__main__":
     signals[['short_mavg', 'long_mavg']].plot(ax=ax1, lw=1.)
 
     # Plot the "buy" trades against AAPL
+    
+    #print("index1: " + signals.ix[signals.positions == 1.0])
     ax1.plot(signals.ix[signals.positions == 1.0].index, 
              signals.short_mavg[signals.positions == 1.0],
              '^', markersize=10, color='m')

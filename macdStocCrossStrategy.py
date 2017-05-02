@@ -22,17 +22,20 @@ class MacdStocCrossStrategy(Strategy):
 
         self.short_window = short_window
         self.long_window = long_window
+        self.stoch_window = 16
+        self.macd_window = 26
 
     def generate_signals(self):
         """Returns the DataFrame of symbols containing the signals
         to go long, short or hold (1, -1 or 0)."""
         signals = pd.DataFrame(index=self.bars.index)
         signals['signal'] = 0.0
+        signals['signal_stoch'] = 0.0
 
         # Create the set of short and long simple moving averages over the 
         # respective periods
-        signals['short_mavg'] = pd.rolling_mean(self.bars['Close'], self.short_window, min_periods=1)
-        signals['long_mavg'] = pd.rolling_mean(self.bars['Close'], self.long_window, min_periods=1)
+        signals['short_mavg'] = self.bars['Close'].rolling(window=self.short_window, min_periods=1, center=False).mean()
+        signals['long_mavg'] = self.bars['Close'].rolling(window=self.long_window, min_periods=1, center=False).mean()
         
         slowstoc = self.slow_stochastic(self.bars['Low'], self.bars['High'], self.bars['Close'], period=16, smoothing=8)
         
@@ -50,12 +53,18 @@ class MacdStocCrossStrategy(Strategy):
         signals['signal'][self.short_window:] = np.where(signals['short_mavg'][self.short_window:] 
             > signals['long_mavg'][self.short_window:], 1.0, 0.0)   
 
+            
+        # Create a 'signal' for Slow Stoc cross over <30 && >70
+        signals['signal_stoch'][self.stoch_window:] = np.where(signals['k_slow'][self.stoch_window:] 
+            > signals['d_slow'][self.stoch_window:], 1.0, 0.0)  
+        
         # Take the difference of the signals in order to generate actual trading orders
         signals['positions'] = signals['signal'].diff()   
+        signals['positions'] = signals['signal_stoch'].diff()   
 
         #print(signals.head())
-        print("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXx")
-        print(signals)
+        #print("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXx")
+        print(signals.to_string())
         
         return signals
         
@@ -65,27 +74,30 @@ class MacdStocCrossStrategy(Strategy):
         :param period: periods for calculating SMA
         :return: a pandas series
         """
-        sma = pd.rolling_mean(prices, period, min_periods=1)
+        sma = prices.rolling(window=period, min_periods=1, center=False).mean()
+        #pd.rolling_mean(prices, period, min_periods=1)        
         return sma
 
-    def fast_stochastic(self, lowp, highp, closep, period=14, smoothing=3):
+    def fast_stochastic(self, lowp, highp, closep, period=16, smoothing=8):
         """ calculate slow stochastic
         Fast stochastic calculation
         %K = (Current Close - Lowest Low)/(Highest High - Lowest Low) * 100
-        %D = 3-day SMA of %K
+        %D = 8-day SMA of %K
         """
-        low_min = pd.rolling_min(lowp, period, min_periods=1)
-        high_max = pd.rolling_max(highp, period, min_periods=1)
+        low_min = lowp.rolling(center=False, min_periods=1, window=period).min()
+        #pd.rolling_min(lowp, period, min_periods=1)
+        high_max = highp.rolling(center=False, min_periods=1, window=period).max()
+        #pd.rolling_max(highp, period, min_periods=1)
         k_fast = 100 * (closep - low_min)/(high_max - low_min)
         #k_fast = k_fast.dropna()
         d_fast = self.simple_moving_average(k_fast, smoothing)
         return k_fast, d_fast
 
-    def slow_stochastic(self, lowp, highp, closep, period=14, smoothing=3):
+    def slow_stochastic(self, lowp, highp, closep, period=16, smoothing=8):
         """ calculate slow stochastic
         Slow stochastic calculation
         %K = %D of fast stochastic
-        %D = 3-day SMA of %K
+        %D = 8-day SMA of %K
         """
         k_fast, d_fast = self.fast_stochastic(lowp, highp, closep, period=period, smoothing=smoothing)
 
@@ -95,10 +107,13 @@ class MacdStocCrossStrategy(Strategy):
         return k_slow, d_slow
         
     def moving_average_convergence(self, prices, nslow=26, nfast=12, smoothing=9):
-        emaslow = pd.ewma(prices, span=nslow, min_periods=1)
-        emafast = pd.ewma(prices, span=nfast, min_periods=1)
+        emaslow = prices.ewm(min_periods=1, ignore_na=False, span=nslow, adjust=True).mean()
+        #pd.ewma(prices, span=nslow, min_periods=1)
+        emafast = prices.ewm(min_periods=1, ignore_na=False, span=nfast, adjust=True).mean()
+        #pd.ewma(prices, span=nfast, min_periods=1)
         macd = emafast - emaslow
-        emasmooth = pd.ewma(macd, span=smoothing, min_periods=1)
+        emasmooth = macd.ewm(min_periods=1, ignore_na=False, span=smoothing, adjust=True).mean()
+        #pd.ewma(macd, span=smoothing, min_periods=1)
         result = pd.DataFrame({'MACD': macd, 'emaSmooth': emasmooth, 'divergence': macd-emasmooth})
         return result
         
@@ -136,12 +151,13 @@ if __name__ == "__main__":
 
     # Obtain daily bars of AAPL from Yahoo Finance for the period
     # 1st Jan 1990 to 1st Jan 2002 - This is an example from ZipLine
-    start = datetime.datetime(2016,4,1)
+    start = datetime.datetime(2010,4,1)
     end = datetime.date.today()
     
     #symbol = 'GOOG'
     symbol = '0005.HK'
     bars = web.DataReader(symbol, "yahoo", start, end)
+    bars = bars.asfreq('W-FRI', method='pad')
 
     # Create a Moving Average Cross Strategy instance with a short moving
     # average window of 100 days and a long window of 400 days
@@ -151,33 +167,31 @@ if __name__ == "__main__":
     # Create a portfolio of AAPL, with $100,000 initial capital
     portfolio = MarketOnClosePortfolio(symbol, bars, signals, initial_capital=100000.0)
     pf = portfolio.backtest_portfolio()
-
-    #print(bars.tail())
     
     fig = plt.figure(figsize=(15, 20))
-    #fig = plt.figure()
     fig.patch.set_facecolor('white')     # Set the outer colour to white
     fig.suptitle(symbol, fontsize=20, color='grey')
 
     #ax1 = fig.add_subplot(211,  ylabel='Price in $')
     ax1 = plt.subplot2grid((9, 1), (0, 0), rowspan=4, ylabel='Price in $')
 
+    # Plot the "buy" trades against Stock
+    ax1.plot(signals.ix[signals.positions == 1.0].index, 
+             signals.short_mavg[signals.positions == 1.0],
+             '^', markersize=7, color='m')
+
+    #print("index1: " + pd.Series(signals.ix[signals.positions == 1.0].index.format()))
+             
+    # Plot the "sell" trades against Stock
+    ax1.plot(signals.ix[signals.positions == -1.0].index, 
+             signals.short_mavg[signals.positions == -1.0],
+             'v', markersize=7, color='k')
+    
+    
     # Plot the AAPL closing price overlaid with the moving averages
     bars['Close'].plot(ax=ax1, color='r', lw=1.)
     signals[['short_mavg', 'long_mavg']].plot(ax=ax1, lw=1.)
 
-    # Plot the "buy" trades against AAPL
-    
-    #print("index1: " + signals.ix[signals.positions == 1.0])
-    ax1.plot(signals.ix[signals.positions == 1.0].index, 
-             signals.short_mavg[signals.positions == 1.0],
-             '^', markersize=10, color='m')
-
-    # Plot the "sell" trades against AAPL
-    ax1.plot(signals.ix[signals.positions == -1.0].index, 
-             signals.short_mavg[signals.positions == -1.0],
-             'v', markersize=10, color='k')
-    
     #myFmt = mdates.DateFormatter('%Y-%m')
     #ax1.xaxis.set_major_formatter(myFmt)    
     
@@ -223,16 +237,17 @@ if __name__ == "__main__":
 
     # Plot the equity curve in dollars
     ax4 = plt.subplot2grid((9, 1), (8, 0), ylabel='Portfolio')
-    pf['total'].plot(ax=ax4, lw=1., grid=True, legend=None)
 
     # Plot the "buy" and "sell" trades against the equity curve
     ax4.plot(pf.ix[signals.positions == 1.0].index, 
              pf.total[signals.positions == 1.0],
-             '^', markersize=10, color='m')
+             '^', markersize=7, color='m')
     ax4.plot(pf.ix[signals.positions == -1.0].index, 
              pf.total[signals.positions == -1.0],
-             'v', markersize=10, color='k')
-             
+             'v', markersize=7, color='k')
+
+    pf['total'].plot(ax=ax4, lw=1., grid=True, legend=None)
+         
     ax4.axes.xaxis.set_visible(False)
 
     # signal

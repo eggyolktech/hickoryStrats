@@ -30,10 +30,13 @@ class MacdStocCrossStrategy(Strategy):
         to go long, short or hold (1, -1 or 0)."""
         signals = pd.DataFrame(index=self.bars.index)
         signals['signal'] = 0.0
-        signals['signal_stoch'] = 0.0
-
+        signals['signal_stoch_x'] = 0.0
+        signals['signal_macd_x'] = 0.0
+        #signals['signal_stoch_short'] = 0.0
+        
         # Create the set of short and long simple moving averages over the 
         # respective periods
+        signals['close'] = self.bars['Close']
         signals['short_mavg'] = self.bars['Close'].rolling(window=self.short_window, min_periods=1, center=False).mean()
         signals['long_mavg'] = self.bars['Close'].rolling(window=self.long_window, min_periods=1, center=False).mean()
         
@@ -46,25 +49,35 @@ class MacdStocCrossStrategy(Strategy):
         
         signals = pd.concat([signals, macd], axis=1)
         
-        #        result = pd.DataFrame({'MACD': emafast-emaslow, 'emaSlw': emaslow, 'emaFst': emafast})
-        
         # Create a 'signal' (invested or not invested) when the short moving average crosses the long
         # moving average, but only for the period greater than the shortest moving average window
-        signals['signal'][self.short_window:] = np.where(signals['short_mavg'][self.short_window:] 
-            > signals['long_mavg'][self.short_window:], 1.0, 0.0)   
+        #signals['signal'][self.short_window:] = np.where(signals['short_mavg'][self.short_window:] 
+        #    > signals['long_mavg'][self.short_window:], 1.0, 0.0)   
 
             
-        # Create a 'signal' for Slow Stoc cross over <30 && >70
-        signals['signal_stoch'][self.stoch_window:] = np.where(signals['k_slow'][self.stoch_window:] 
-            > signals['d_slow'][self.stoch_window:], 1.0, 0.0)  
+        # Create a 'signal' for Slow Stoc cross over <=20 && >=80
+        signals['signal_stoch_x'][self.stoch_window:] = np.where(
+            (signals['k_slow'][self.stoch_window:] > signals['d_slow'][self.stoch_window:])
+            #& (signals['k_slow'][self.stoch_window:] <= 20)
+            , 1.0, 0.0)  
+       
+        signals['signal_macd_x'][self.macd_window:] = np.where(
+            (signals['MACD'][self.macd_window:] > signals['emaSmooth'][self.macd_window:])
+            , 1.0, 0.0)  
+        
+        #        result = pd.DataFrame({'MACD': macd, 'emaSmooth': emasmooth, 'divergence': macd-emasmooth})
+
+       
+        signals['positions'] = signals['signal_stoch_x'].diff()
+        signals.loc[signals.positions == -1.0, 'positions'] = 0.0
         
         # Take the difference of the signals in order to generate actual trading orders
-        signals['positions'] = signals['signal'].diff()   
-        signals['positions'] = signals['signal_stoch'].diff()   
+        #signals['positions'] = signals['signal'].diff()   
+        #signals['positions'] = signals['signal'].diff()   
 
         #print(signals.head())
         #print("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXx")
-        print(signals.to_string())
+        print(signals[['divergence', 'k_slow', 'signal_stoch_x', 'signal_macd_x', 'positions']].to_string())
         
         return signals
         
@@ -145,56 +158,67 @@ class MarketOnClosePortfolio(Portfolio):
         pf['cash'] = self.initial_capital - pf['holdings'].cumsum()
         pf['total'] = pf['cash'] + self.positions[self.symbol].cumsum() * self.bars['Close']
         pf['returns'] = pf['total'].pct_change()
-        return pf
+        #print("total len: " + str(len(pf['total'])))
+        #print("total: " + pf['total'].to_string())
         
-if __name__ == "__main__":
+        return pf
 
-    # Obtain daily bars of AAPL from Yahoo Finance for the period
-    # 1st Jan 1990 to 1st Jan 2002 - This is an example from ZipLine
-    start = datetime.datetime(2010,4,1)
+        
+def generate_strategy_result(symbol, period):
+ 
     end = datetime.date.today()
+    start = end
     
-    #symbol = 'GOOG'
-    symbol = '0005.HK'
+    # Determine correct start/end date
+    if (period == "WEEKLY"):
+        start = end - datetime.timedelta(days=(3*365))
+    elif (period == "MONTHLY"):
+        start = end - datetime.timedelta(days=(15*365))
+    else:
+        period = "DAILY"
+        start = end - datetime.timedelta(days=(1*365))
+        
     bars = web.DataReader(symbol, "yahoo", start, end)
-    bars = bars.asfreq('W-FRI', method='pad')
+    
+    if (period == "WEEKLY"):
+        bars = bars.asfreq('W-FRI', method='pad')
+    elif (period == "MONTHLY"):
+        bars = bars.asfreq('M', method='pad')
 
     # Create a Moving Average Cross Strategy instance with a short moving
     # average window of 100 days and a long window of 400 days
     mac = MacdStocCrossStrategy(symbol, bars, short_window=14, long_window=27)
     signals = mac.generate_signals()
 
-    # Create a portfolio of AAPL, with $100,000 initial capital
+    # Create a portfolio of Stock Quote, with $100,000 initial capital
     portfolio = MarketOnClosePortfolio(symbol, bars, signals, initial_capital=100000.0)
     pf = portfolio.backtest_portfolio()
     
     fig = plt.figure(figsize=(15, 20))
     fig.patch.set_facecolor('white')     # Set the outer colour to white
-    fig.suptitle(symbol, fontsize=20, color='grey')
+    fig.suptitle(symbol + " " + period, fontsize=12, color='grey')
 
     #ax1 = fig.add_subplot(211,  ylabel='Price in $')
     ax1 = plt.subplot2grid((9, 1), (0, 0), rowspan=4, ylabel='Price in $')
 
     # Plot the "buy" trades against Stock
-    ax1.plot(signals.ix[signals.positions == 1.0].index, 
-             signals.short_mavg[signals.positions == 1.0],
-             '^', markersize=7, color='m')
+    #print(signals.ix[signals.positions == 1.0].index);
+    #print(len(signals.ix[signals.positions == 1.0].index));
+    #print(len(signals.short_mavg[signals.positions == 1.0]));
+    
+    #ax1.plot(signals.ix[signals.positions == 1.0].index, 
+    #         signals.close[signals.positions == 1.0],
+    #         '^', markersize=7, color='m')
 
-    #print("index1: " + pd.Series(signals.ix[signals.positions == 1.0].index.format()))
-             
     # Plot the "sell" trades against Stock
-    ax1.plot(signals.ix[signals.positions == -1.0].index, 
-             signals.short_mavg[signals.positions == -1.0],
-             'v', markersize=7, color='k')
+    #ax1.plot(signals.ix[signals.positions == -1.0].index, 
+    #         signals.close[signals.positions == -1.0],
+    #         'v', markersize=7, color='k')
     
-    
-    # Plot the AAPL closing price overlaid with the moving averages
+    # Plot the closing price overlaid with the moving averages
     bars['Close'].plot(ax=ax1, color='r', lw=1.)
     signals[['short_mavg', 'long_mavg']].plot(ax=ax1, lw=1.)
 
-    #myFmt = mdates.DateFormatter('%Y-%m')
-    #ax1.xaxis.set_major_formatter(myFmt)    
-    
     # Set the tick labels font
     for label in (ax1.get_xticklabels() + ax1.get_yticklabels()):
         label.set_fontname('Arial')
@@ -208,8 +232,12 @@ if __name__ == "__main__":
     ax2 = plt.subplot2grid((9, 1), (4, 0), rowspan=2, ylabel='Slow Stoc')
     ax2.axes.xaxis.set_visible(False)
     signals[['k_slow', 'd_slow']].plot(ax=ax2, lw=1., grid=True, legend=None)
-    ax2.axhline(y = 80, color = "brown", lw = 0.5)
-    ax2.axhline(y = 20, color = "red", lw = 0.5)    
+    
+    ax2.fill_between(signals.index, 80, 100, facecolor='red', alpha=.2, interpolate=True)
+    ax2.fill_between(signals.index, 0, 20, facecolor='red', alpha=.2, interpolate=True)
+    
+    #ax2.axhline(y = 80, color = "brown", lw = 0.5)
+    #ax2.axhline(y = 20, color = "red", lw = 0.5)    
  
     # Plot the MACD
     ax3 = plt.subplot2grid((9, 1), (6, 0), rowspan=2, ylabel='MACD')
@@ -225,29 +253,25 @@ if __name__ == "__main__":
     ax3.fill_between(signals.index, signals['divergence'], 0,
                 where=signals['divergence'] < 0,
                 facecolor='red', alpha=.8, interpolate=True)
-    
-    #signals[['divergence']].plot(x=signals.index.values, ax=ax3, kind='bar', lw=1.) 
-    #signals[['MACD']].plot(x=signals.index.values, ax=ax3, lw=1.)  
-    #signals[['emaSmooth']].plot(x=signals.index.values, ax=ax3, lw=1.)  
-    
-    #print(signals[['divergence']].tail())
-    #print(signals[['MACD']].tail())
-    #print(signals[['emaSmooth']].tail())
-     
 
-    # Plot the equity curve in dollars
+                # Plot the equity curve in dollars
     ax4 = plt.subplot2grid((9, 1), (8, 0), ylabel='Portfolio')
 
     # Plot the "buy" and "sell" trades against the equity curve
-    ax4.plot(pf.ix[signals.positions == 1.0].index, 
-             pf.total[signals.positions == 1.0],
-             '^', markersize=7, color='m')
-    ax4.plot(pf.ix[signals.positions == -1.0].index, 
-             pf.total[signals.positions == -1.0],
-             'v', markersize=7, color='k')
+    
+    if (len(pf.total[signals.positions == 1.0]) > 0):
+        ax4.plot(pf.ix[signals.positions == 1.0].index, 
+                 pf.total[signals.positions == 1.0],
+                 '^', markersize=7, color='m')
+    
+    if (len(pf.total[signals.positions == -1.0]) > 0):    
+        ax4.plot(pf.ix[signals.positions == -1.0].index, 
+                 pf.total[signals.positions == -1.0],
+                 'v', markersize=7, color='k')
 
-    pf['total'].plot(ax=ax4, lw=1., grid=True, legend=None)
-         
+             
+    pf['total'].plot(ax=ax4, lw=1., grid=True, legend=None) 
+    
     ax4.axes.xaxis.set_visible(False)
 
     # signal
@@ -259,6 +283,11 @@ if __name__ == "__main__":
     #signals.positions.plot(ax=ax4)
 
     # Plot the figure
-    #fig.show(block=True)
     plt.tight_layout(h_pad=3)
     plt.show()
+        
+if __name__ == "__main__":
+
+    #generate_strategy_result("0005.HK", "DAILY")
+    generate_strategy_result("3988.HK", "WEEKLY")
+    #generate_strategy_result("0005.HK", "MONTHLY")

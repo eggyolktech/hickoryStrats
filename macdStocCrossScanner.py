@@ -2,8 +2,11 @@ import numpy as np
 import pandas as pd
 import quandl   # Necessary for obtaining financial data easily
 import datetime
+from datetime import tzinfo, timedelta, datetime
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
+import traceback
+import logging
 
 from pandas_datareader import data as web, wb
 from hickoryBase import Strategy
@@ -50,21 +53,28 @@ class MacdStocCrossScanner(Strategy):
         
         signals = pd.concat([signals, macd], axis=1)
         
+        #print(signals.to_string())
+        
         # Create a 'signal' (invested or not invested) when the short moving average crosses the long
         # moving average, but only for the period greater than the shortest moving average window
         #signals['signal'][self.short_window:] = np.where(signals['short_mavg'][self.short_window:] 
         #    > signals['long_mavg'][self.short_window:], 1.0, 0.0)   
-
             
         # Create a 'signal' for Slow Stoc cross over <=20 && >=80
-        signals['signal_stoch_x'][self.stoch_window:] = np.where(
-            (signals['k_slow'][self.stoch_window:] > signals['d_slow'][self.stoch_window:])
-            & (signals['k_slow'][self.stoch_window:] <= 20)
-            , 1.0, 0.0)  
+        if (len(signals) >= self.stoch_window):
+            signals['signal_stoch_x'][self.stoch_window:] = np.where(
+                (signals['k_slow'][self.stoch_window:] > signals['d_slow'][self.stoch_window:])
+                & (signals['k_slow'][self.stoch_window:] <= 20)
+                , 1.0, 0.0)
+        else:
+            signals['signal_stoch_x'] = 0.0
        
-        signals['signal_macd_x'][self.macd_window:] = np.where(
-            (signals['MACD'][self.macd_window:] > signals['emaSmooth'][self.macd_window:])
-            , 1.0, 0.0)  
+        if (len(signals) >= self.macd_window):
+            signals['signal_macd_x'][self.macd_window:] = np.where(
+                (signals['MACD'][self.macd_window:] > signals['emaSmooth'][self.macd_window:])
+                , 1.0, 0.0)
+        else:
+            signals['signal_macd_x'] = 0.0
         
         #        result = pd.DataFrame({'MACD': macd, 'emaSmooth': emasmooth, 'divergence': macd-emasmooth})
 
@@ -73,7 +83,7 @@ class MacdStocCrossScanner(Strategy):
         signals['positions'] = signals['signal_stoch_x'].diff()
         signals.loc[signals.positions == -1.0, 'positions'] = 0.0
 
-        #print(signals[['divergence', 'k_slow', 'signal_stoch_x', 'signal_macd_x', 'positions']].to_string())
+        #print(signals[['k_slow', 'd_slow', 'signal_stoch_x', 'divergence', 'signal_macd_x', 'positions']].to_string())
         return signals
         
     def simple_moving_average(self, prices, period=26):
@@ -179,20 +189,26 @@ def generate_scanner_chart(symbol, period, bars, signals):
         
 def generate_scanner_result(symbol, period):
  
-    end = datetime.date.today()
+    end = datetime.today()
     start = end
     
     # Determine correct start/end date
     if (period == "WEEKLY"):
-        start = end - datetime.timedelta(days=(3*365))
+        start = end - timedelta(days=(3*365))
     elif (period == "MONTHLY"):
-        start = end - datetime.timedelta(days=(15*365))
+        start = end - timedelta(days=(15*365))
     else:
         period = "DAILY"
-        start = end - datetime.timedelta(days=(1*365))
-        
-    bars = web.DataReader(symbol, "yahoo", start, end)
+        start = end - timedelta(days=(1*365))
     
+    try:
+        bars = web.DataReader(symbol, "yahoo", start, end)
+    except:
+        #logging.error("Error getting code:" + symbol)
+        #logging.error(traceback.format_exc())
+        return
+
+  
     if (period == "WEEKLY"):
         bars = bars.asfreq('W-FRI', method='pad')
     elif (period == "MONTHLY"):
@@ -204,25 +220,71 @@ def generate_scanner_result(symbol, period):
     signals = mac.generate_signals()
     
     if(len(signals.ix[signals.positions == 1.0].index) > 0):    
-        print(symbol + " " + period + ": [" + str(signals.ix[signals.positions == 1.0].index[-1]) + "]")
+    
+        then = signals.ix[signals.positions == 1.0].index[-1].date()
+        now = datetime.now().date()
+        difference =  (now - then) / timedelta(days=1)
+        
+        if (difference < 5):
+            print(symbol + " " + period + ": [" + str(then) + ", " +  str(difference) + " days ago]")
     
     #generate_scanner_chart(symbol, period, bars, signals)
 
-        
+def is_number(s):
+    try:
+        int(s)
+        return True
+    except ValueError:
+        return False
+ 
 if __name__ == "__main__":
 
     with open('data/list_IndexList.json', encoding="utf-8") as data_file:    
         indexlists = json.load(data_file)  
         
     for index in indexlists:
+    
+        #break
         print ("\n============================================================================== " + index["code"] + " (" + index["label"] + ")")
         for stock in index["list"]:
-            try:
-                print (stock["code"] + " (" + stock["label"] + ")")
-            except:
-                print (stock["code"] + " (" + str(stock["label"].encode("utf-8")) + ")")
+            
+            code = stock["code"].lstrip("0");
 
-    #generate_scanner_result("3988.HK", "DAILY")
+            if (is_number(code)):
+                code = code.rjust(4, '0') + ".HK"  
+
+            #try:
+                #print (code + " (" + stock["label"] + ")")
+            #except:
+                #print (code + " (" + str(stock["label"].encode("utf-8")) + ")")
+            #    logging.error(traceback.format_exc())
+            
+            generate_scanner_result(code, "DAILY")
+
+    with open('data/list_ETFList.json', encoding="utf-8") as data_file:    
+        etflists = json.load(data_file)              
+
+    for etflist in etflists:
+        #break
+        print ("\n============================================================================== " + etflist["code"] + " (" + etflist["label"] + ")")
+        
+        for stock in etflist["list"]:
+            
+            code = stock["code"].lstrip("0");
+
+            if (is_number(code)):
+                code = code.rjust(4, '0') + ".HK"  
+
+            #try:
+            #    print (code + " (" + stock["label"] + ")")
+            #except:
+            #    print (code + " (" + str(stock["label"].encode("utf-8")) + ")")
+            #    logging.error(traceback.format_exc())
+            
+            generate_scanner_result(code, "DAILY")
+        
+   
+    #generate_scanner_result("3153.HK", "DAILY")
     #generate_scanner_result("2388.HK", "DAILY")
-    #generate_scanner_result("0939.HK", "DAILY")
+    #generate_scanner_result("0012.HK", "DAILY")
 

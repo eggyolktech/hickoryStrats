@@ -187,7 +187,7 @@ def generate_scanner_chart(symbol, period, bars, signals):
     plt.tight_layout(h_pad=5)
     plt.show()
         
-def generate_scanner_result(symbol, period):
+def generate_scanner_result(symbol, period, datasrc='yahoo'):
  
     end = datetime.today()
     start = end
@@ -202,13 +202,13 @@ def generate_scanner_result(symbol, period):
         start = end - timedelta(days=(1*365))
     
     try:
-        bars = web.DataReader(symbol, "yahoo", start, end)
+        bars = web.DataReader(symbol, datasrc, start, end)
     except:
-        #logging.error("Error getting code:" + symbol)
-        #logging.error(traceback.format_exc())
+        logging.error("Error getting code:" + symbol)
+        logging.error(traceback.format_exc())
         return
 
-  
+    #print(bars.to_string())
     if (period == "WEEKLY"):
         bars = bars.asfreq('W-FRI', method='pad')
     elif (period == "MONTHLY"):
@@ -228,7 +228,7 @@ def generate_scanner_result(symbol, period):
         if (difference < 5):
             print(symbol + " " + period + ": [" + str(then) + ", " +  str(difference) + " days ago]")
     
-    #generate_scanner_chart(symbol, period, bars, signals)
+    generate_scanner_chart(symbol, period, bars, signals)
 
 def is_number(s):
     try:
@@ -236,55 +236,77 @@ def is_number(s):
         return True
     except ValueError:
         return False
- 
+
+def generateScanner(type):
+
+    if (type == 'index'):
+    
+        with open('data/list_IndexList.json', encoding="utf-8") as data_file:    
+            indexlists = json.load(data_file)  
+            
+        for index in indexlists:
+        
+            #break
+            print ("\n============================================================================== " + index["code"] + " (" + index["label"] + ")")
+            for stock in index["list"]:
+                
+                code = stock["code"].lstrip("0");
+
+                if (is_number(code)):
+                    code = code.rjust(4, '0') + ".HK"  
+
+                #try:
+                    #print (code + " (" + stock["label"] + ")")
+                #except:
+                    #print (code + " (" + str(stock["label"].encode("utf-8")) + ")")
+                #    logging.error(traceback.format_exc())
+                
+                generate_scanner_result(code, "DAILY")   
+        
+    elif (type == 'etf'):
+    
+        with open('data/list_ETFList.json', encoding="utf-8") as data_file:    
+            etflists = json.load(data_file)              
+
+        for etflist in etflists:
+            #break
+            print ("\n============================================================================== " + etflist["code"] + " (" + etflist["label"] + ")")
+            
+            for stock in etflist["list"]:
+                
+                code = stock["code"].lstrip("0");
+
+                if (is_number(code)):
+                    code = code.rjust(4, '0') + ".HK"  
+                
+                generate_scanner_result(code, "DAILY")
+                
+    elif (type == 'fx'):
+
+        with open('data/list_FXList.json', encoding="utf-8") as data_file:    
+            lists = json.load(data_file)              
+
+        for list in lists:
+            #break
+            print ("\n============================================================================== " + list["code"] + " (" + list["label"] + ")")
+            
+            for stock in list["list"]:
+                
+                code = stock["code"].lstrip("0");
+
+                if (is_number(code)):
+                    code = code.rjust(4, '0') + ".HK"  
+                
+                generate_scanner_result(code, "DAILY")
+        
 if __name__ == "__main__":
 
-    with open('data/list_IndexList.json', encoding="utf-8") as data_file:    
-        indexlists = json.load(data_file)  
-        
-    for index in indexlists:
-    
-        #break
-        print ("\n============================================================================== " + index["code"] + " (" + index["label"] + ")")
-        for stock in index["list"]:
-            
-            code = stock["code"].lstrip("0");
-
-            if (is_number(code)):
-                code = code.rjust(4, '0') + ".HK"  
-
-            #try:
-                #print (code + " (" + stock["label"] + ")")
-            #except:
-                #print (code + " (" + str(stock["label"].encode("utf-8")) + ")")
-            #    logging.error(traceback.format_exc())
-            
-            generate_scanner_result(code, "DAILY")
-
-    with open('data/list_ETFList.json', encoding="utf-8") as data_file:    
-        etflists = json.load(data_file)              
-
-    for etflist in etflists:
-        #break
-        print ("\n============================================================================== " + etflist["code"] + " (" + etflist["label"] + ")")
-        
-        for stock in etflist["list"]:
-            
-            code = stock["code"].lstrip("0");
-
-            if (is_number(code)):
-                code = code.rjust(4, '0') + ".HK"  
-
-            #try:
-            #    print (code + " (" + stock["label"] + ")")
-            #except:
-            #    print (code + " (" + str(stock["label"].encode("utf-8")) + ")")
-            #    logging.error(traceback.format_exc())
-            
-            generate_scanner_result(code, "DAILY")
-        
-   
-    #generate_scanner_result("3153.HK", "DAILY")
+    generateScanner('index')
+    generateScanner('etf')
+    #generateScanner('fx')
+  
+    #generate_scanner_result("DEXJPUS", "DAILY", 'fred')
     #generate_scanner_result("2388.HK", "DAILY")
+    #generate_scanner_result("AUD=X", "DAILY")
     #generate_scanner_result("0012.HK", "DAILY")
 

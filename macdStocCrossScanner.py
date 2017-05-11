@@ -208,7 +208,17 @@ def generate_scanner_result(symbol, period, datasrc='yahoo'):
         logging.error(traceback.format_exc())
         return
 
-    #print(bars.to_string())
+    reciprocals = ['EUR=X', 'GBP=X', 'AUD=X', 'NZD=X']
+    
+    if( any(st in symbol for st in reciprocals) ): 
+        bars['Open'] = np.reciprocal(bars['Open'])
+        bars['High'] = np.reciprocal(bars['High'])
+        bars['Low'] = np.reciprocal(bars['Low'])
+        bars['Close'] = np.reciprocal(bars['Close'])
+        bars['Adj Close'] = np.reciprocal(bars['Adj Close'])
+
+    print(bars.to_string())
+        
     if (period == "WEEKLY"):
         bars = bars.asfreq('W-FRI', method='pad')
     elif (period == "MONTHLY"):
@@ -301,9 +311,9 @@ def generateScanner(type):
         
 if __name__ == "__main__":
 
-    generateScanner('index')
-    generateScanner('etf')
-    #generateScanner('fx')
+    #generateScanner('index')
+    #generateScanner('etf')
+    generateScanner('fx')
   
     #generate_scanner_result("DEXJPUS", "DAILY", 'fred')
     #generate_scanner_result("2388.HK", "DAILY")

@@ -83,7 +83,10 @@ class MacdStocCrossScanner(Strategy):
         signals['positions'] = signals['signal_stoch_x'].diff()
         signals.loc[signals.positions == -1.0, 'positions'] = 0.0
 
-        #print(signals[['k_slow', 'd_slow', 'signal_stoch_x', 'divergence', 'signal_macd_x', 'positions']].to_string())
+        #print(signals[['close', 'k_slow', 'd_slow', 'signal_stoch_x', 'divergence', 'signal_macd_x', 'positions']].head())
+        #print(signals[['close', 'k_slow', 'd_slow', 'low_min', 'high_max', 'k_fast', 'd_fast']].to_string())
+        #print(signals[['MACD', 'divergence']].head())
+        
         return signals
         
     def simple_moving_average(self, prices, period=26):
@@ -104,8 +107,23 @@ class MacdStocCrossScanner(Strategy):
         """
         low_min = lowp.rolling(center=False, min_periods=1, window=period).min()
         high_max = highp.rolling(center=False, min_periods=1, window=period).max()
+       
+        #print("LOW_MIN")
+        #print(low_min['20160511':'20160518'])
+        #print("HIGH_P")
+        #print(highp['20160511':'20160518'])
+        #print("HIGH_MAX")
+        #print(high_max['20160511':'20160518'])
+        #print("CLOSEP")
+        #print(closep['20160511':'20160518'])
         k_fast = 100 * (closep - low_min)/(high_max - low_min)
         d_fast = self.simple_moving_average(k_fast, smoothing)
+        
+        #print("K_FAST")
+        #print(k_fast['20160511':'20160518'])
+        #print("D_FAST")
+        #print(d_fast['20160511':'20160518'])
+        
         return k_fast, d_fast
 
     def slow_stochastic(self, lowp, highp, closep, period=16, smoothing=8):
@@ -186,7 +204,56 @@ def generate_scanner_chart(symbol, period, bars, signals):
     # Plot the figure
     plt.tight_layout(h_pad=5)
     plt.show()
+
+def retrieve_bars_data(symbol, datasrc, start, end):
+
+    bars = None
+
+    reciprocals = ['EUR=X', 'GBP=X', 'AUD=X', 'NZD=X']
+    crosspairs = ['GBPJPY=X', 'EURJPY=X', 'EURGBP=X']
+    
+    #print(bars.to_string())
+    
+    #print("BARS HIGH Previous")
+    #print(bars.head())
+    
+    #print("[" + symbol + "]")
+    
+    if ( any(st == symbol for st in reciprocals) ): 
+        #print("In Reciprocals....")
+        bars = web.DataReader(symbol, datasrc, start, end)
+        bars['Open'] = np.reciprocal(bars['Open'])
+        recHigh = np.reciprocal(bars['Low'])
+        recLow = np.reciprocal(bars['High'])
+        bars['High'] = recHigh
+        bars['Low'] = recLow
+
+        bars['Close'] = np.reciprocal(bars['Close'])
+        bars['Adj Close'] = np.reciprocal(bars['Adj Close'])
+    elif ( any(st == symbol for st in crosspairs) ):
+        #print("In Crosspairs....")
+        x1bars = web.DataReader(symbol[0:3] + '=X', datasrc, start, end)
+        x2bars = web.DataReader(symbol[3:6] + '=X', datasrc, start, end)
         
+        x1bars['Open'] = np.reciprocal(x1bars['Open'])
+        recHigh = np.reciprocal(x1bars['Low'])
+        recLow = np.reciprocal(x1bars['High'])
+        x1bars['High'] = recHigh
+        x1bars['Low'] = recLow
+
+        x1bars['Close'] = np.reciprocal(x1bars['Close'])
+        x1bars['Adj Close'] = np.reciprocal(x1bars['Adj Close'])
+        
+        bars = x1bars * x2bars
+    
+    else:
+        bars = web.DataReader(symbol, datasrc, start, end)
+        
+    #print("BARS HIGH After")    
+    #print(bars.head())   
+        
+    return bars  
+
 def generate_scanner_result(symbol, period, datasrc='yahoo'):
  
     end = datetime.today()
@@ -202,23 +269,12 @@ def generate_scanner_result(symbol, period, datasrc='yahoo'):
         start = end - timedelta(days=(1*365))
     
     try:
-        bars = web.DataReader(symbol, datasrc, start, end)
+        bars = retrieve_bars_data(symbol, datasrc, start, end)
     except:
         logging.error("Error getting code:" + symbol)
         logging.error(traceback.format_exc())
         return
 
-    reciprocals = ['EUR=X', 'GBP=X', 'AUD=X', 'NZD=X']
-    
-    if( any(st in symbol for st in reciprocals) ): 
-        bars['Open'] = np.reciprocal(bars['Open'])
-        bars['High'] = np.reciprocal(bars['High'])
-        bars['Low'] = np.reciprocal(bars['Low'])
-        bars['Close'] = np.reciprocal(bars['Close'])
-        bars['Adj Close'] = np.reciprocal(bars['Adj Close'])
-
-    print(bars.to_string())
-        
     if (period == "WEEKLY"):
         bars = bars.asfreq('W-FRI', method='pad')
     elif (period == "MONTHLY"):
@@ -229,16 +285,18 @@ def generate_scanner_result(symbol, period, datasrc='yahoo'):
     mac = MacdStocCrossScanner(symbol, bars, short_window=14, long_window=27)
     signals = mac.generate_signals()
     
+    #print(signals.to_string())
+    
     if(len(signals.ix[signals.positions == 1.0].index) > 0):    
     
         then = signals.ix[signals.positions == 1.0].index[-1].date()
         now = datetime.now().date()
         difference =  (now - then) / timedelta(days=1)
         
-        if (difference < 5):
+        if (difference < 20):
             print(symbol + " " + period + ": [" + str(then) + ", " +  str(difference) + " days ago]")
     
-    generate_scanner_chart(symbol, period, bars, signals)
+    #generate_scanner_chart(symbol, period, bars, signals)
 
 def is_number(s):
     try:
@@ -300,13 +358,8 @@ def generateScanner(type):
             #break
             print ("\n============================================================================== " + list["code"] + " (" + list["label"] + ")")
             
-            for stock in list["list"]:
-                
-                code = stock["code"].lstrip("0");
-
-                if (is_number(code)):
-                    code = code.rjust(4, '0') + ".HK"  
-                
+            for stock in list["list"]:    
+                code = stock["code"]
                 generate_scanner_result(code, "DAILY")
         
 if __name__ == "__main__":

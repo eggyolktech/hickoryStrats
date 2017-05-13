@@ -293,7 +293,7 @@ def generate_scanner_result(symbol, period, datasrc='yahoo'):
         now = datetime.now().date()
         difference =  (now - then) / timedelta(days=1)
         
-        if (difference < 20):
+        if (difference < 10):
             print(symbol + " " + period + ": [" + str(then) + ", " +  str(difference) + " days ago]")
     
     #generate_scanner_chart(symbol, period, bars, signals)
@@ -364,9 +364,12 @@ def generateScanner(type):
         
 if __name__ == "__main__":
 
-    #generateScanner('index')
-    #generateScanner('etf')
+    generateScanner('index')
+    generateScanner('etf')
     generateScanner('fx')
+    
+    #generate_scanner_result("XAU=X", "DAILY")
+    
   
     #generate_scanner_result("DEXJPUS", "DAILY", 'fred')
     #generate_scanner_result("2388.HK", "DAILY")

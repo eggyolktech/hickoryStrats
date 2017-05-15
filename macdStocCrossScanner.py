@@ -271,8 +271,8 @@ def generate_scanner_result(symbol, period, datasrc='yahoo'):
     try:
         bars = retrieve_bars_data(symbol, datasrc, start, end)
     except:
-        logging.error("Error getting code:" + symbol)
-        logging.error(traceback.format_exc())
+        logging.error(" Error getting code: " + symbol)
+        #logging.error(traceback.format_exc())
         return
 
     if (period == "WEEKLY"):

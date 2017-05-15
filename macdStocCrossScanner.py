@@ -3,6 +3,7 @@ import pandas as pd
 import quandl   # Necessary for obtaining financial data easily
 import datetime
 from datetime import tzinfo, timedelta, datetime
+import time
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 import traceback
@@ -203,7 +204,16 @@ def generate_scanner_chart(symbol, period, bars, signals):
 
     # Plot the figure
     plt.tight_layout(h_pad=5)
-    plt.show()
+    #plt.show()
+    
+    chartpath = "C:\\Temp\\charts\\" + 'macdStocX.' + symbol + "." + str(int(round(time.time() * 1000))) + '.png'
+    #plt.savefig(chartpath, bbox_inches='tight')
+    plt.savefig(chartpath)
+    plt.clf()
+    
+    result = []
+    result.append(chartpath)
+    return result
 
 def retrieve_bars_data(symbol, datasrc, start, end):
 
@@ -271,7 +281,7 @@ def generate_scanner_result(symbol, period, datasrc='yahoo'):
     try:
         bars = retrieve_bars_data(symbol, datasrc, start, end)
     except:
-        logging.error(" Error getting code: " + symbol)
+        #logging.error(" Error getting code: " + symbol)
         #logging.error(traceback.format_exc())
         return
 
@@ -293,10 +303,8 @@ def generate_scanner_result(symbol, period, datasrc='yahoo'):
         now = datetime.now().date()
         difference =  (now - then) / timedelta(days=1)
         
-        if (difference < 10):
-            print(symbol + " " + period + ": [" + str(then) + ", " +  str(difference) + " days ago]")
-    
-    #generate_scanner_chart(symbol, period, bars, signals)
+        if (difference < 15):
+            print(symbol + " " + period + ": [" + str(then) + ", " +  str(difference) + " days ago, chart: " + generate_scanner_chart(symbol, period, bars, signals)[0] + "]")
 
 def is_number(s):
     try:

@@ -13,6 +13,18 @@ from pandas_datareader import data as web, wb
 from hickoryBase import Strategy
 import json
 
+import urllib.request
+import urllib.parse
+import requests
+import re
+import configparser
+
+config = configparser.ConfigParser()
+config.read('config.properties')
+
+EL = "\n"
+DEL = "\n\n"
+
 class MacdStocCrossScanner(Strategy):
     """    
     Requires:
@@ -210,6 +222,7 @@ def generate_scanner_chart(symbol, period, bars, signals):
     #plt.savefig(chartpath, bbox_inches='tight')
     plt.savefig(chartpath)
     plt.clf()
+    plt.close(fig)
     
     result = []
     result.append(chartpath)
@@ -268,6 +281,7 @@ def generate_scanner_result(symbol, period, datasrc='yahoo'):
  
     end = datetime.today()
     start = end
+    result = []
     
     # Determine correct start/end date
     if (period == "WEEKLY"):
@@ -283,7 +297,7 @@ def generate_scanner_result(symbol, period, datasrc='yahoo'):
     except:
         #logging.error(" Error getting code: " + symbol)
         #logging.error(traceback.format_exc())
-        return
+        return result
 
     if (period == "WEEKLY"):
         bars = bars.asfreq('W-FRI', method='pad')
@@ -305,6 +319,11 @@ def generate_scanner_result(symbol, period, datasrc='yahoo'):
         
         if (difference < 15):
             print(symbol + " " + period + ": [" + str(then) + ", " +  str(difference) + " days ago, chart: " + generate_scanner_chart(symbol, period, bars, signals)[0] + "]")
+            result.append(symbol + " " + period + ": [" + str(then) + ", " +  str(difference) + " days ago")
+            result.append(generate_scanner_chart(symbol, period, bars, signals)[0])
+    
+    #print("result: " + symbol + " - " + str(result))
+    return result
 
 def is_number(s):
     try:
@@ -313,7 +332,21 @@ def is_number(s):
     except ValueError:
         return False
 
+def send_to_tg_chatroom(passage): 
+
+    chat_list = config.items("telegram-chat")
+    bot_send_url = config.get("telegram","bot-send-url")
+    
+    for key, chat_id in chat_list:
+        print("Chat to send: " + key + " => " + chat_id);
+
+        result = urllib.request.urlopen(bot_send_url, urllib.parse.urlencode({ "parse_mode": "HTML", "chat_id": chat_id, "text": passage }).encode("utf-8")).read()
+        
+        print(result)
+        
 def generateScanner(type):
+
+    passage = ""
 
     if (type == 'index'):
     
@@ -324,6 +357,8 @@ def generateScanner(type):
         
             #break
             print ("\n============================================================================== " + index["code"] + " (" + index["label"] + ")")
+            result_list = ""
+            
             for stock in index["list"]:
                 
                 code = stock["code"].lstrip("0");
@@ -337,7 +372,13 @@ def generateScanner(type):
                     #print (code + " (" + str(stock["label"].encode("utf-8")) + ")")
                 #    logging.error(traceback.format_exc())
                 
-                generate_scanner_result(code, "DAILY")   
+                result = generate_scanner_result(code, "DAILY")
+
+                if (len(result) > 0):
+                    result_list = result_list + result[0] + EL
+                    
+            if (len(result_list) > 0):
+                passage = passage + EL + index["code"] + " (" + index["label"] + ")" + DEL + result_list                
         
     elif (type == 'etf'):
     
@@ -347,6 +388,7 @@ def generateScanner(type):
         for etflist in etflists:
             #break
             print ("\n============================================================================== " + etflist["code"] + " (" + etflist["label"] + ")")
+            result_list = ""
             
             for stock in etflist["list"]:
                 
@@ -355,7 +397,13 @@ def generateScanner(type):
                 if (is_number(code)):
                     code = code.rjust(4, '0') + ".HK"  
                 
-                generate_scanner_result(code, "DAILY")
+                result = generate_scanner_result(code, "DAILY")
+                
+                if (len(result) > 0):
+                    result_list = result_list + result[0] + EL
+                    
+            if (len(result_list) > 0):
+                passage = passage + EL + etflist["code"] + " (" + etflist["label"] + ")" + DEL + result_list    
                 
     elif (type == 'fx'):
 
@@ -365,16 +413,31 @@ def generateScanner(type):
         for list in lists:
             #break
             print ("\n============================================================================== " + list["code"] + " (" + list["label"] + ")")
+            result_list = ""
             
             for stock in list["list"]:    
                 code = stock["code"]
-                generate_scanner_result(code, "DAILY")
+                result = generate_scanner_result(code, "DAILY")
+                
+                if (len(result) > 0):
+                    result_list = result_list + result[0] + EL
+                    
+            if (len(result_list) > 0):
+                passage = passage + EL + list["code"] + " (" + list["label"] + ")" + DEL + result_list 
+    
+    return passage
         
 if __name__ == "__main__":
 
-    generateScanner('index')
-    generateScanner('etf')
-    generateScanner('fx')
+    send_to_tg_chatroom(generateScanner('index'))
+    #print(generate_scanner_result("2686668.HK", "DAILY"))
+    send_to_tg_chatroom(generateScanner('etf'))
+    send_to_tg_chatroom(generateScanner('fx'))    
+    
+    #generateScanner('etf')
+    #generateScanner('fx')
+    
+    #send_to_tg_chatroom("Test")
     
     #generate_scanner_result("XAU=X", "DAILY")
     

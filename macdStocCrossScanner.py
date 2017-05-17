@@ -295,8 +295,8 @@ def generate_scanner_result(symbol, period, datasrc='yahoo'):
     try:
         bars = retrieve_bars_data(symbol, datasrc, start, end)
     except:
-        #logging.error(" Error getting code: " + symbol)
-        #logging.error(traceback.format_exc())
+        logging.error(" Error getting code: " + symbol)
+        logging.error(traceback.format_exc())
         return result
 
     if (period == "WEEKLY"):
@@ -429,12 +429,12 @@ def generateScanner(type):
         
 if __name__ == "__main__":
 
-    send_to_tg_chatroom(generateScanner('index'))
+    #send_to_tg_chatroom(generateScanner('index'))
     #print(generate_scanner_result("2686668.HK", "DAILY"))
-    send_to_tg_chatroom(generateScanner('etf'))
-    send_to_tg_chatroom(generateScanner('fx'))    
+    #send_to_tg_chatroom(generateScanner('etf'))
+    #send_to_tg_chatroom(generateScanner('fx'))    
     
-    #generateScanner('etf')
+    generateScanner('etf')
     #generateScanner('fx')
     
     #send_to_tg_chatroom("Test")
@@ -443,7 +443,7 @@ if __name__ == "__main__":
     
   
     #generate_scanner_result("DEXJPUS", "DAILY", 'fred')
-    #generate_scanner_result("2388.HK", "DAILY")
+    generate_scanner_result("2388.HK", "DAILY")
     #generate_scanner_result("AUD=X", "DAILY")
     #generate_scanner_result("0012.HK", "DAILY")
 

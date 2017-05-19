@@ -18,6 +18,7 @@ import urllib.parse
 import requests
 import re
 import configparser
+import io
 
 config = configparser.ConfigParser()
 config.read('config.properties')
@@ -228,6 +229,47 @@ def generate_scanner_chart(symbol, period, bars, signals):
     result.append(chartpath)
     return result
 
+def retrieve_bars_data_from_yahoo(symbol, datasrc, start, end):
+
+    start_epoch = str(start.timestamp()).split(".")[0]
+    end_epoch = str(end.timestamp()).split(".")[0]
+    
+    print("Retrieving data for [" + symbol + "] from " + str(start_epoch) + " to " + str(end_epoch))
+
+    with requests.Session() as session:
+        
+        response = session.get('https://finance.yahoo.com/quote/2628.HK/history?p=2628.HK')
+        print(session.cookies.get_dict())   
+
+        regex = '"CrumbStore":{"crumb":"(.+?)"}'
+        pattern = re.compile(regex)
+        getcrumb = re.findall(pattern, str(response.content))
+        print(str(getcrumb[0]))
+        
+        url = 'https://query1.finance.yahoo.com/v7/finance/download/'  + symbol + '?period1=' + start_epoch + '&period2=' + end_epoch + '&interval=1d&events=history&crumb=' + getcrumb[0]
+
+        response = session.get(url)
+        
+        #print(response.content.decode("utf-8"))
+
+        df = pd.read_csv(io.StringIO(response.content.decode("utf-8")), header=0, sep=',', index_col=0)
+        
+        # Converting the index as date
+        df.index = pd.to_datetime(df.index)
+        df = df[df.Open != "null"]
+        
+        df[['Open', 'High', 'Low', 'Close', 'Adj Close', 'Volume']] = df[['Open', 'High', 'Low', 'Close', 'Adj Close', 'Volume']].apply(pd.to_numeric)
+        
+        print(df.Open.values)
+        print(df.High.values)
+        print(df.Low.values)
+        print(df.Close.values)
+        print(df.Volume.values)
+        
+        #print(df.to_string())
+        return df
+
+    
 def retrieve_bars_data(symbol, datasrc, start, end):
 
     bars = None
@@ -243,8 +285,14 @@ def retrieve_bars_data(symbol, datasrc, start, end):
     #print("[" + symbol + "]")
     
     if ( any(st == symbol for st in reciprocals) ): 
-        #print("In Reciprocals....")
-        bars = web.DataReader(symbol, datasrc, start, end)
+        
+        if (datasrc == "yahoo"):
+            bars = web.DataReader(symbol, datasrc, start, end)
+        elif (datasrc == "yahoo_direct"):
+            bars = retrieve_bars_data_from_yahoo(symbol, datasrc, start, end)
+        else :
+            bars = retrieve_bars_data_from_yahoo(symbol, datasrc, start, end)
+        
         bars['Open'] = np.reciprocal(bars['Open'])
         recHigh = np.reciprocal(bars['Low'])
         recLow = np.reciprocal(bars['High'])
@@ -255,8 +303,16 @@ def retrieve_bars_data(symbol, datasrc, start, end):
         bars['Adj Close'] = np.reciprocal(bars['Adj Close'])
     elif ( any(st == symbol for st in crosspairs) ):
         #print("In Crosspairs....")
-        x1bars = web.DataReader(symbol[0:3] + '=X', datasrc, start, end)
-        x2bars = web.DataReader(symbol[3:6] + '=X', datasrc, start, end)
+        
+        if (datasrc == "yahoo"):
+            x1bars = web.DataReader(symbol[0:3] + '=X', datasrc, start, end)
+            x2bars = web.DataReader(symbol[3:6] + '=X', datasrc, start, end)
+        elif (datasrc == "yahoo_direct"):
+            x1bars = retrieve_bars_data_from_yahoo(symbol[0:3] + '=X', datasrc, start, end)
+            x2bars = retrieve_bars_data_from_yahoo(symbol[3:6] + '=X', datasrc, start, end)       
+        else:
+            x1bars = retrieve_bars_data_from_yahoo(symbol[0:3] + '=X', datasrc, start, end)
+            x2bars = retrieve_bars_data_from_yahoo(symbol[3:6] + '=X', datasrc, start, end) 
         
         x1bars['Open'] = np.reciprocal(x1bars['Open'])
         recHigh = np.reciprocal(x1bars['Low'])
@@ -270,14 +326,19 @@ def retrieve_bars_data(symbol, datasrc, start, end):
         bars = x1bars * x2bars
     
     else:
-        bars = web.DataReader(symbol, datasrc, start, end)
+        if (datasrc == "yahoo"):
+            bars = web.DataReader(symbol, datasrc, start, end)
+        elif (datasrc == "yahoo_direct"):
+            bars = retrieve_bars_data_from_yahoo(symbol, datasrc, start, end)
+        else:
+            bars = retrieve_bars_data_from_yahoo(symbol, datasrc, start, end)
         
     #print("BARS HIGH After")    
     #print(bars.head())   
         
     return bars  
 
-def generate_scanner_result(symbol, period, datasrc='yahoo'):
+def generate_scanner_result(symbol, period, datasrc='yahoo_direct'):
  
     end = datetime.today()
     start = end
@@ -434,7 +495,7 @@ if __name__ == "__main__":
     #send_to_tg_chatroom(generateScanner('etf'))
     #send_to_tg_chatroom(generateScanner('fx'))    
     
-    generateScanner('etf')
+    #generateScanner('etf')
     #generateScanner('fx')
     
     #send_to_tg_chatroom("Test")
@@ -443,7 +504,7 @@ if __name__ == "__main__":
     
   
     #generate_scanner_result("DEXJPUS", "DAILY", 'fred')
-    generate_scanner_result("2388.HK", "DAILY")
+    generate_scanner_result("2800.HK", "DAILY")
     #generate_scanner_result("AUD=X", "DAILY")
     #generate_scanner_result("0012.HK", "DAILY")
 

@@ -28,6 +28,11 @@ config.read('config.properties')
 EL = "\n"
 DEL = "\n\n"
 
+class TimeFrame(Enum):
+    MONTHLY = 1
+    WEEKLY = 2
+    DAILY = 3
+
 class YahooFinanceSingleton:
     __single = None
     __cookies = None
@@ -49,6 +54,8 @@ class YahooFinanceSingleton:
             
             YahooFinanceSingleton.__cookies = cookies
             YahooFinanceSingleton.__crumb = getcrumb[0]
+            
+            #print("Session Cookies: [" + str(cookies.get_dict()) + "], Crumb: [" + getcrumb[0] + "]")     
     
     def getSingleton():
         if not YahooFinanceSingleton.__single:
@@ -256,7 +263,7 @@ def generate_scanner_chart(symbol, period, bars, signals):
     
     chartpath = "C:\\Temp\\charts\\" + 'macdStocX.' + symbol + "." + str(int(round(time.time() * 1000))) + '.png'
     #plt.savefig(chartpath, bbox_inches='tight')
-    plt.savefig(chartpath)
+    #plt.savefig(chartpath)
     plt.clf()
     plt.close(fig)
     
@@ -269,16 +276,14 @@ def retrieve_bars_data_from_yahoo(symbol, datasrc, start, end):
     start_epoch = str(start.timestamp()).split(".")[0]
     end_epoch = str(end.timestamp()).split(".")[0]
     
-    print("Retrieving data for [" + symbol + "] from " + str(start_epoch) + " to " + str(end_epoch))
+    #print("Retrieving data for [" + symbol + "] from " + str(start_epoch) + " to " + str(end_epoch))
 
     cookies = None
     crumb = None
     
     singleton = YahooFinanceSingleton.getSingleton()
     cookies = singleton.getCookies()
-    crumb = singleton.getCrumb()   
-
-    print("Session Cookies: [" + str(cookies.get_dict()) + "], Crumb: [" + crumb + "]")     
+    crumb = singleton.getCrumb()    
     
     if (cookies and crumb):
     
@@ -292,17 +297,19 @@ def retrieve_bars_data_from_yahoo(symbol, datasrc, start, end):
         
         # Converting the index as date
         df.index = pd.to_datetime(df.index)
-        
+   
         # Only required if df is not float64 type
-        if( df.Open.dtype != "float64"):
+        if( len(df.index) > 0 and df.Open.dtype != "float64"):
             df = df[df.Open != "null"]
             df[['Open', 'High', 'Low', 'Close', 'Adj Close', 'Volume']] = df[['Open', 'High', 'Low', 'Close', 'Adj Close', 'Volume']].apply(pd.to_numeric)
+        elif (len(df.index) == 0):
+            #print("No historical data for code: [" + symbol + "]")
+            raise ValueError
         
         #print(df.Open.values)
         #print(df.to_string())
         #print(df.tail())
         return df
-
     
 def retrieve_bars_data(symbol, datasrc, start, end):
 
@@ -391,7 +398,7 @@ def generate_scanner_result(symbol, period, datasrc='yahoo_direct'):
         bars = retrieve_bars_data(symbol, datasrc, start, end)
     except:
         logging.error(" Error getting code: " + symbol)
-        logging.error(traceback.format_exc())
+        #logging.error(traceback.format_exc())
         return result
 
     if (period == "WEEKLY"):
@@ -414,7 +421,7 @@ def generate_scanner_result(symbol, period, datasrc='yahoo_direct'):
         
         if (difference < 15):
             print(symbol + " " + period + ": [" + str(then) + ", " +  str(difference) + " days ago, chart: " + generate_scanner_chart(symbol, period, bars, signals)[0] + "]")
-            result.append(symbol + " " + period + ": [" + str(then) + ", " +  str(difference) + " days ago")
+            result.append(symbol + " " + period + ": [" + str(then) + ", " +  str(difference) + " days ago]")
             result.append(generate_scanner_chart(symbol, period, bars, signals)[0])
     
     #print("result: " + symbol + " - " + str(result))
@@ -438,10 +445,47 @@ def send_to_tg_chatroom(passage):
         result = urllib.request.urlopen(bot_send_url, urllib.parse.urlencode({ "parse_mode": "HTML", "chat_id": chat_id, "text": passage }).encode("utf-8")).read()
         
         print(result)
+
+def generateScannerFromJson(jsonPath, tfEnum):
+
+    passage = "Macstoc Xover " + tfEnum.name + " as of " + str(datetime.now().date()) + "" + EL
+    print(passage)
+
+    with open(jsonPath, encoding="utf-8") as data_file:    
+        lists = json.load(data_file)              
+
+    for list in lists:
+        #break
+        print ("\n============================================================================== " + list["code"] + " (" + list["label"] + ")")
+        result_list = ""
+        
+        for stock in list["list"]:    
+
+            code = stock["code"].lstrip("0");
+
+            if (is_number(code)):
+                code = code.rjust(4, '0') + ".HK"  
+
+            #try:
+                #print (code + " (" + stock["label"] + ")")
+            #except:
+                #print (code + " (" + str(stock["label"].encode("utf-8")) + ")")
+            #    logging.error(traceback.format_exc())
+
+            result = generate_scanner_result(code, tfEnum.name)
+            
+            if (len(result) > 0):
+                result_list = result_list + result[0] + EL
+                
+        if (len(result_list) > 0):
+            passage = passage + EL + list["code"] + " (" + list["label"] + ")" + DEL + result_list 
+    
+    return passage
+            
         
 def generateScanner(type):
 
-    passage = ""
+    passage = "Macstoc Xover " + timeframe + " as of " + str(datetime.now().date()) + "" + DEL
 
     if (type == 'index'):
     
@@ -524,21 +568,13 @@ def generateScanner(type):
         
 if __name__ == "__main__":
 
-    #send_to_tg_chatroom(generateScanner('index'))
-    #print(generate_scanner_result("2686668.HK", "DAILY"))
-    send_to_tg_chatroom(generateScanner('etf'))
-    #send_to_tg_chatroom(generateScanner('fx'))    
-    
-    #generateScanner('etf')
-    #generateScanner('fx')
-    
-    #send_to_tg_chatroom("Test")
+    #send_to_tg_chatroom(generateScannerFromJson('data/list_IndexList.json', TimeFrame.DAILY))
+    #send_to_tg_chatroom(generateScannerFromJson('data/list_ETFList.json', TimeFrame.DAILY))
+    #send_to_tg_chatroom(generateScannerFromJson('data/list_FXList.json', TimeFrame.DAILY)) 
     
     #generate_scanner_result("XAU=X", "DAILY")
-    
-  
     #generate_scanner_result("DEXJPUS", "DAILY", 'fred')
-    #generate_scanner_result("2800.HK", "DAILY")
+    generate_scanner_result("3017.HK", "DAILY")
     #generate_scanner_result("AUD=X", "DAILY")
     #generate_scanner_result("0012.HK", "DAILY")
 

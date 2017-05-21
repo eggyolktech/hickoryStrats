@@ -20,11 +20,46 @@ import re
 import configparser
 import io
 
+from enum import Enum
+
 config = configparser.ConfigParser()
 config.read('config.properties')
 
 EL = "\n"
 DEL = "\n\n"
+
+class YahooFinanceSingleton:
+    __single = None
+    __cookies = None
+    __crumb = None
+    
+    def __init__(self):
+        if YahooFinanceSingleton.__single:
+            raise YahooFinanceSingleton.__single
+        YahooFinanceSingleton.__single = self
+        
+        with requests.Session() as session:
+        
+            response = session.get('https://finance.yahoo.com/quote/2628.HK/history?p=2628.HK')
+            cookies = session.cookies
+
+            regex = '"CrumbStore":{"crumb":"(.+?)"}'
+            pattern = re.compile(regex)
+            getcrumb = re.findall(pattern, str(response.content))
+            
+            YahooFinanceSingleton.__cookies = cookies
+            YahooFinanceSingleton.__crumb = getcrumb[0]
+    
+    def getSingleton():
+        if not YahooFinanceSingleton.__single:
+            YahooFinanceSingleton.__single = YahooFinanceSingleton()
+        return YahooFinanceSingleton.__single
+    
+    def getCookies(self):
+        return YahooFinanceSingleton.__cookies
+        
+    def getCrumb(self):
+        return YahooFinanceSingleton.__crumb
 
 class MacdStocCrossScanner(Strategy):
     """    
@@ -217,7 +252,7 @@ def generate_scanner_chart(symbol, period, bars, signals):
 
     # Plot the figure
     plt.tight_layout(h_pad=5)
-    #plt.show()
+    plt.show()
     
     chartpath = "C:\\Temp\\charts\\" + 'macdStocX.' + symbol + "." + str(int(round(time.time() * 1000))) + '.png'
     #plt.savefig(chartpath, bbox_inches='tight')
@@ -236,19 +271,20 @@ def retrieve_bars_data_from_yahoo(symbol, datasrc, start, end):
     
     print("Retrieving data for [" + symbol + "] from " + str(start_epoch) + " to " + str(end_epoch))
 
-    with requests.Session() as session:
-        
-        response = session.get('https://finance.yahoo.com/quote/2628.HK/history?p=2628.HK')
-        print(session.cookies.get_dict())   
+    cookies = None
+    crumb = None
+    
+    singleton = YahooFinanceSingleton.getSingleton()
+    cookies = singleton.getCookies()
+    crumb = singleton.getCrumb()   
 
-        regex = '"CrumbStore":{"crumb":"(.+?)"}'
-        pattern = re.compile(regex)
-        getcrumb = re.findall(pattern, str(response.content))
-        print(str(getcrumb[0]))
-        
-        url = 'https://query1.finance.yahoo.com/v7/finance/download/'  + symbol + '?period1=' + start_epoch + '&period2=' + end_epoch + '&interval=1d&events=history&crumb=' + getcrumb[0]
+    print("Session Cookies: [" + str(cookies.get_dict()) + "], Crumb: [" + crumb + "]")     
+    
+    if (cookies and crumb):
+    
+        url = 'https://query1.finance.yahoo.com/v7/finance/download/'  + symbol + '?period1=' + start_epoch + '&period2=' + end_epoch + '&interval=1d&events=history&crumb=' + crumb
 
-        response = session.get(url)
+        response = requests.get(url, cookies=cookies)
         
         #print(response.content.decode("utf-8"))
 
@@ -256,17 +292,15 @@ def retrieve_bars_data_from_yahoo(symbol, datasrc, start, end):
         
         # Converting the index as date
         df.index = pd.to_datetime(df.index)
-        df = df[df.Open != "null"]
         
-        df[['Open', 'High', 'Low', 'Close', 'Adj Close', 'Volume']] = df[['Open', 'High', 'Low', 'Close', 'Adj Close', 'Volume']].apply(pd.to_numeric)
+        # Only required if df is not float64 type
+        if( df.Open.dtype != "float64"):
+            df = df[df.Open != "null"]
+            df[['Open', 'High', 'Low', 'Close', 'Adj Close', 'Volume']] = df[['Open', 'High', 'Low', 'Close', 'Adj Close', 'Volume']].apply(pd.to_numeric)
         
-        print(df.Open.values)
-        print(df.High.values)
-        print(df.Low.values)
-        print(df.Close.values)
-        print(df.Volume.values)
-        
+        #print(df.Open.values)
         #print(df.to_string())
+        #print(df.tail())
         return df
 
     
@@ -492,7 +526,7 @@ if __name__ == "__main__":
 
     #send_to_tg_chatroom(generateScanner('index'))
     #print(generate_scanner_result("2686668.HK", "DAILY"))
-    #send_to_tg_chatroom(generateScanner('etf'))
+    send_to_tg_chatroom(generateScanner('etf'))
     #send_to_tg_chatroom(generateScanner('fx'))    
     
     #generateScanner('etf')
@@ -504,7 +538,10 @@ if __name__ == "__main__":
     
   
     #generate_scanner_result("DEXJPUS", "DAILY", 'fred')
-    generate_scanner_result("2800.HK", "DAILY")
+    #generate_scanner_result("2800.HK", "DAILY")
     #generate_scanner_result("AUD=X", "DAILY")
     #generate_scanner_result("0012.HK", "DAILY")
+
+    
+    
 

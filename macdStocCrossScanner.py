@@ -259,7 +259,7 @@ def generate_scanner_chart(symbol, period, bars, signals):
 
     # Plot the figure
     plt.tight_layout(h_pad=5)
-    plt.show()
+    #plt.show()
     
     chartpath = "C:\\Temp\\charts\\" + 'macdStocX.' + symbol + "." + str(int(round(time.time() * 1000))) + '.png'
     #plt.savefig(chartpath, bbox_inches='tight')
@@ -302,6 +302,10 @@ def retrieve_bars_data_from_yahoo(symbol, datasrc, start, end):
         if( len(df.index) > 0 and df.Open.dtype != "float64"):
             df = df[df.Open != "null"]
             df[['Open', 'High', 'Low', 'Close', 'Adj Close', 'Volume']] = df[['Open', 'High', 'Low', 'Close', 'Adj Close', 'Volume']].apply(pd.to_numeric)
+            
+            if(not "=" in symbol):
+                df = df[df.Volume > 0]
+                
         elif (len(df.index) == 0):
             #print("No historical data for code: [" + symbol + "]")
             raise ValueError
@@ -420,8 +424,8 @@ def generate_scanner_result(symbol, period, datasrc='yahoo_direct'):
         difference =  (now - then) / timedelta(days=1)
         
         if (difference < 15):
-            print(symbol + " " + period + ": [" + str(then) + ", " +  str(difference) + " days ago, chart: " + generate_scanner_chart(symbol, period, bars, signals)[0] + "]")
-            result.append(symbol + " " + period + ": [" + str(then) + ", " +  str(difference) + " days ago]")
+            #print(symbol + " " + period + ": [" + str(then) + ", " +  str(difference) + " days ago, chart: " + generate_scanner_chart(symbol, period, bars, signals)[0] + "]")
+            result.append("/qd" + symbol.replace(".HK", "") + " " + period + ": [" + str(then) + ", " +  str(difference) + " days ago]")
             result.append(generate_scanner_chart(symbol, period, bars, signals)[0])
     
     #print("result: " + symbol + " - " + str(result))
@@ -448,7 +452,9 @@ def send_to_tg_chatroom(passage):
 
 def generateScannerFromJson(jsonPath, tfEnum):
 
+    passage = ""
     passage = "Macstoc Xover " + tfEnum.name + " as of " + str(datetime.now().date()) + "" + EL
+    signalDict = {}
     print(passage)
 
     with open(jsonPath, encoding="utf-8") as data_file:    
@@ -474,16 +480,17 @@ def generateScannerFromJson(jsonPath, tfEnum):
 
             result = generate_scanner_result(code, tfEnum.name)
             
+            # have data
             if (len(result) > 0):
-                result_list = result_list + result[0] + EL
+                if (not code in signalDict):
+                    print(result[0])
+                    result_list = result_list + result[0] + EL
+                    signalDict[code] = "Yes"
                 
         if (len(result_list) > 0):
-            passage = passage + EL + list["code"] + " (" + list["label"] + ")" + DEL + result_list 
+            passage = passage + EL + list["code"] + " (" + list["label"] + ")" + DEL + result_list
     
     return passage
-            
-        
-def generateScanner(type):
 
     passage = "Macstoc Xover " + timeframe + " as of " + str(datetime.now().date()) + "" + DEL
 
@@ -562,19 +569,19 @@ def generateScanner(type):
                     result_list = result_list + result[0] + EL
                     
             if (len(result_list) > 0):
-                passage = passage + EL + list["code"] + " (" + list["label"] + ")" + DEL + result_list 
+                passage = passage + EL + "/qd" + list["code"].replace(".HK", "") + " (" + list["label"] + ")" + DEL + result_list 
     
     return passage
         
 if __name__ == "__main__":
 
-    #send_to_tg_chatroom(generateScannerFromJson('data/list_IndexList.json', TimeFrame.DAILY))
-    #send_to_tg_chatroom(generateScannerFromJson('data/list_ETFList.json', TimeFrame.DAILY))
-    #send_to_tg_chatroom(generateScannerFromJson('data/list_FXList.json', TimeFrame.DAILY)) 
+    send_to_tg_chatroom(generateScannerFromJson('data/list_IndexList.json', TimeFrame.DAILY))
+    send_to_tg_chatroom(generateScannerFromJson('data/list_ETFList.json', TimeFrame.DAILY))
+    send_to_tg_chatroom(generateScannerFromJson('data/list_FXList.json', TimeFrame.DAILY)) 
     
     #generate_scanner_result("XAU=X", "DAILY")
     #generate_scanner_result("DEXJPUS", "DAILY", 'fred')
-    generate_scanner_result("3017.HK", "DAILY")
+    #generate_scanner_result("3017.HK", "DAILY")
     #generate_scanner_result("AUD=X", "DAILY")
     #generate_scanner_result("0012.HK", "DAILY")
 

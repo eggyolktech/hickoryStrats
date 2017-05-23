@@ -453,7 +453,7 @@ def send_to_tg_chatroom(passage):
 def generateScannerFromJson(jsonPath, tfEnum):
 
     passage = ""
-    passage = "Macstoc Xover " + tfEnum.name + " as of " + str(datetime.now().date()) + "" + EL
+    passage = "Macstoc Xover @ " + tfEnum.name + " as of " + str(datetime.now().date()) + "" + EL
     signalDict = {}
     print(passage)
 
@@ -575,6 +575,12 @@ def generateScannerFromJson(jsonPath, tfEnum):
         
 if __name__ == "__main__":
 
+    # Weekly
+    #send_to_tg_chatroom(generateScannerFromJson('data/list_IndexList.json', TimeFrame.WEEKLY))
+    #send_to_tg_chatroom(generateScannerFromJson('data/list_ETFList.json', TimeFrame.WEEKLY))
+    #send_to_tg_chatroom(generateScannerFromJson('data/list_FXList.json', TimeFrame.WEEKLY)) 
+    
+    # Daily
     send_to_tg_chatroom(generateScannerFromJson('data/list_IndexList.json', TimeFrame.DAILY))
     send_to_tg_chatroom(generateScannerFromJson('data/list_ETFList.json', TimeFrame.DAILY))
     send_to_tg_chatroom(generateScannerFromJson('data/list_FXList.json', TimeFrame.DAILY)) 

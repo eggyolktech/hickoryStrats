@@ -401,15 +401,21 @@ def generate_scanner_result(symbol, period, datasrc='yahoo_direct'):
     try:
         bars = retrieve_bars_data(symbol, datasrc, start, end)
     except:
-        logging.error(" Error getting code: " + symbol)
+        logging.error(" Error retrieving code: " + symbol)
         #logging.error(traceback.format_exc())
         return result
 
+    #print(bars.to_string())
+    
+    command = "/qd"
     if (period == "WEEKLY"):
         bars = bars.asfreq('W-FRI', method='pad')
+        command = "/qw"
     elif (period == "MONTHLY"):
         bars = bars.asfreq('M', method='pad')
-
+        command = "/qM"
+    print(period)
+    print(command)
     # Create a Moving Average Cross Strategy instance with a short moving
     # average window of 100 days and a long window of 400 days
     mac = MacdStocCrossScanner(symbol, bars, short_window=14, long_window=27)
@@ -425,7 +431,7 @@ def generate_scanner_result(symbol, period, datasrc='yahoo_direct'):
         
         if (difference < 15):
             #print(symbol + " " + period + ": [" + str(then) + ", " +  str(difference) + " days ago, chart: " + generate_scanner_chart(symbol, period, bars, signals)[0] + "]")
-            result.append("/qd" + symbol.replace(".HK", "") + " " + period + ": [" + str(then) + ", " +  str(difference) + " days ago]")
+            result.append(command + symbol.replace(".HK", "") + " " + period + ": [" + str(then) + ", " +  str(difference) + " days ago]")
             result.append(generate_scanner_chart(symbol, period, bars, signals)[0])
     
     #print("result: " + symbol + " - " + str(result))
@@ -478,7 +484,14 @@ def generateScannerFromJson(jsonPath, tfEnum):
                 #print (code + " (" + str(stock["label"].encode("utf-8")) + ")")
             #    logging.error(traceback.format_exc())
 
-            result = generate_scanner_result(code, tfEnum.name)
+            #print (code)
+            
+            try:
+                result = generate_scanner_result(code, tfEnum.name)
+            except:
+                logging.error(" Error getting code: " + code)
+                #logging.error(traceback.format_exc())
+                result = ""            
             
             # have data
             if (len(result) > 0):
@@ -491,105 +504,24 @@ def generateScannerFromJson(jsonPath, tfEnum):
             passage = passage + EL + list["code"] + " (" + list["label"] + ")" + DEL + result_list
     
     return passage
-
-    passage = "Macstoc Xover " + timeframe + " as of " + str(datetime.now().date()) + "" + DEL
-
-    if (type == 'index'):
-    
-        with open('data/list_IndexList.json', encoding="utf-8") as data_file:    
-            indexlists = json.load(data_file)  
-            
-        for index in indexlists:
-        
-            #break
-            print ("\n============================================================================== " + index["code"] + " (" + index["label"] + ")")
-            result_list = ""
-            
-            for stock in index["list"]:
-                
-                code = stock["code"].lstrip("0");
-
-                if (is_number(code)):
-                    code = code.rjust(4, '0') + ".HK"  
-
-                #try:
-                    #print (code + " (" + stock["label"] + ")")
-                #except:
-                    #print (code + " (" + str(stock["label"].encode("utf-8")) + ")")
-                #    logging.error(traceback.format_exc())
-                
-                result = generate_scanner_result(code, "DAILY")
-
-                if (len(result) > 0):
-                    result_list = result_list + result[0] + EL
-                    
-            if (len(result_list) > 0):
-                passage = passage + EL + index["code"] + " (" + index["label"] + ")" + DEL + result_list                
-        
-    elif (type == 'etf'):
-    
-        with open('data/list_ETFList.json', encoding="utf-8") as data_file:    
-            etflists = json.load(data_file)              
-
-        for etflist in etflists:
-            #break
-            print ("\n============================================================================== " + etflist["code"] + " (" + etflist["label"] + ")")
-            result_list = ""
-            
-            for stock in etflist["list"]:
-                
-                code = stock["code"].lstrip("0");
-
-                if (is_number(code)):
-                    code = code.rjust(4, '0') + ".HK"  
-                
-                result = generate_scanner_result(code, "DAILY")
-                
-                if (len(result) > 0):
-                    result_list = result_list + result[0] + EL
-                    
-            if (len(result_list) > 0):
-                passage = passage + EL + etflist["code"] + " (" + etflist["label"] + ")" + DEL + result_list    
-                
-    elif (type == 'fx'):
-
-        with open('data/list_FXList.json', encoding="utf-8") as data_file:    
-            lists = json.load(data_file)              
-
-        for list in lists:
-            #break
-            print ("\n============================================================================== " + list["code"] + " (" + list["label"] + ")")
-            result_list = ""
-            
-            for stock in list["list"]:    
-                code = stock["code"]
-                result = generate_scanner_result(code, "DAILY")
-                
-                if (len(result) > 0):
-                    result_list = result_list + result[0] + EL
-                    
-            if (len(result_list) > 0):
-                passage = passage + EL + "/qd" + list["code"].replace(".HK", "") + " (" + list["label"] + ")" + DEL + result_list 
-    
-    return passage
         
 if __name__ == "__main__":
 
     # Weekly
-    #send_to_tg_chatroom(generateScannerFromJson('data/list_IndexList.json', TimeFrame.WEEKLY))
-    #send_to_tg_chatroom(generateScannerFromJson('data/list_ETFList.json', TimeFrame.WEEKLY))
-    #send_to_tg_chatroom(generateScannerFromJson('data/list_FXList.json', TimeFrame.WEEKLY)) 
+    send_to_tg_chatroom(generateScannerFromJson('data/list_IndexList.json', TimeFrame.WEEKLY))
+    send_to_tg_chatroom(generateScannerFromJson('data/list_ETFList.json', TimeFrame.WEEKLY))
+    send_to_tg_chatroom(generateScannerFromJson('data/list_FXList.json', TimeFrame.WEEKLY)) 
     
     # Daily
-    send_to_tg_chatroom(generateScannerFromJson('data/list_IndexList.json', TimeFrame.DAILY))
-    send_to_tg_chatroom(generateScannerFromJson('data/list_ETFList.json', TimeFrame.DAILY))
-    send_to_tg_chatroom(generateScannerFromJson('data/list_FXList.json', TimeFrame.DAILY)) 
+    #send_to_tg_chatroom(generateScannerFromJson('data/list_IndexList.json', TimeFrame.DAILY))
+    #send_to_tg_chatroom(generateScannerFromJson('data/list_ETFList.json', TimeFrame.DAILY))
+    #send_to_tg_chatroom(generateScannerFromJson('data/list_FXList.json', TimeFrame.DAILY)) 
     
     #generate_scanner_result("XAU=X", "DAILY")
     #generate_scanner_result("DEXJPUS", "DAILY", 'fred')
     #generate_scanner_result("3017.HK", "DAILY")
     #generate_scanner_result("AUD=X", "DAILY")
-    #generate_scanner_result("0012.HK", "DAILY")
+    #generate_scanner_result("0012.HK", "WEEKLY")
 
     
     

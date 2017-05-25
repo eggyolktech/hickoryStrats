@@ -83,7 +83,7 @@ class MacdStocCrossScanner(Strategy):
         self.short_window = short_window
         self.long_window = long_window
         self.stoch_window = 16
-        self.macd_window = 26
+        self.macd_window = 12
 
     def generate_signals(self):
         """Returns the DataFrame of symbols containing the signals
@@ -94,9 +94,13 @@ class MacdStocCrossScanner(Strategy):
         signals['signal_macd_x'] = 0.0
         #signals['signal_stoch_short'] = 0.0
         
+        pd.options.mode.chained_assignment = None  # default='warn'
+        
         # Create the set of short and long simple moving averages over the 
         # respective periods
         signals['close'] = self.bars['Close']
+        signals['vol'] = self.bars['Volume']
+        signals['turnover'] = self.bars['Close'] * self.bars['Volume'] 
         signals['short_mavg'] = self.bars['Close'].rolling(window=self.short_window, min_periods=1, center=False).mean()
         signals['long_mavg'] = self.bars['Close'].rolling(window=self.long_window, min_periods=1, center=False).mean()
         
@@ -108,8 +112,6 @@ class MacdStocCrossScanner(Strategy):
         macd = self.moving_average_convergence(self.bars['Close'])
         
         signals = pd.concat([signals, macd], axis=1)
-        
-        #print(signals.to_string())
         
         # Create a 'signal' (invested or not invested) when the short moving average crosses the long
         # moving average, but only for the period greater than the shortest moving average window
@@ -136,10 +138,14 @@ class MacdStocCrossScanner(Strategy):
 
 
         # Take the difference of the signals in order to generate actual trading orders
-        signals['positions'] = signals['signal_stoch_x'].diff()
-        signals.loc[signals.positions == -1.0, 'positions'] = 0.0
+        signals['stoch_positions'] = signals['signal_stoch_x'].diff()
+        signals.loc[signals.stoch_positions == -1.0, 'stoch_positions'] = 0.0
 
-        #print(signals[['close', 'k_slow', 'd_slow', 'signal_stoch_x', 'divergence', 'signal_macd_x', 'positions']].head())
+        signals['macd_positions'] = signals['signal_macd_x'].diff()
+        signals.loc[signals.macd_positions == -1.0, 'macd_positions'] = 0.0
+        
+        #print(signals[['close', 'MACD', 'emaSmooth', 'divergence', 'signal_macd_x', 'macd_positions', 'turnover']].to_string())
+        #print(signals[['close', 'k_slow', 'd_slow', 'signal_stoch_x', 'MACD', 'divergence', 'signal_macd_x', 'stoch_positions']].to_string())
         #print(signals[['close', 'k_slow', 'd_slow', 'low_min', 'high_max', 'k_fast', 'd_fast']].to_string())
         #print(signals[['MACD', 'divergence']].head())
         
@@ -402,7 +408,7 @@ def generate_scanner_result(symbol, period, datasrc='yahoo_direct'):
         bars = retrieve_bars_data(symbol, datasrc, start, end)
     except:
         logging.error(" Error retrieving code: " + symbol)
-        #logging.error(traceback.format_exc())
+        logging.error(traceback.format_exc())
         return result
 
     #print(bars.to_string())
@@ -414,8 +420,8 @@ def generate_scanner_result(symbol, period, datasrc='yahoo_direct'):
     elif (period == "MONTHLY"):
         bars = bars.asfreq('M', method='pad')
         command = "/qM"
-    print(period)
-    print(command)
+    #print(period)
+    #print(command)
     # Create a Moving Average Cross Strategy instance with a short moving
     # average window of 100 days and a long window of 400 days
     mac = MacdStocCrossScanner(symbol, bars, short_window=14, long_window=27)
@@ -423,17 +429,28 @@ def generate_scanner_result(symbol, period, datasrc='yahoo_direct'):
     
     #print(signals.to_string())
     
-    if(len(signals.ix[signals.positions == 1.0].index) > 0):    
+    if(len(signals.ix[signals.stoch_positions == 1.0].index) > 0):    
     
-        then = signals.ix[signals.positions == 1.0].index[-1].date()
+        then = signals.ix[signals.stoch_positions == 1.0].index[-1].date()
         now = datetime.now().date()
         difference =  (now - then) / timedelta(days=1)
         
         if (difference < 15):
-            #print(symbol + " " + period + ": [" + str(then) + ", " +  str(difference) + " days ago, chart: " + generate_scanner_chart(symbol, period, bars, signals)[0] + "]")
+            print(symbol + " " + period + ": [" + str(then) + ", " +  str(difference) + " days ago @ Stoch, avg vol: [" + signals['vol'].mean() + "]")
             result.append(command + symbol.replace(".HK", "") + " " + period + ": [" + str(then) + ", " +  str(difference) + " days ago]")
             result.append(generate_scanner_chart(symbol, period, bars, signals)[0])
+
+    if(len(signals.ix[signals.macd_positions == 1.0].index) > 0):    
     
+        then = signals.ix[signals.macd_positions == 1.0].index[-1].date()
+        now = datetime.now().date()
+        difference =  (now - then) / timedelta(days=1)
+        
+        mean_turnover = signals['turnover'].mean()
+        
+        if (difference < 15):
+            print(symbol + " " + period + ": [" + str(then) + ", " +  str(difference) + " days ago at MACD, avg turnover: [" + str(mean_turnover) + "]")
+
     #print("result: " + symbol + " - " + str(result))
     return result
 
@@ -471,7 +488,7 @@ def generateScannerFromJson(jsonPath, tfEnum):
         print ("\n============================================================================== " + list["code"] + " (" + list["label"] + ")")
         result_list = ""
         
-        for stock in list["list"]:    
+        for stock in list["list"][0:1]:    
 
             code = stock["code"].lstrip("0");
 
@@ -508,20 +525,20 @@ def generateScannerFromJson(jsonPath, tfEnum):
 if __name__ == "__main__":
 
     # Weekly
-    send_to_tg_chatroom(generateScannerFromJson('data/list_IndexList.json', TimeFrame.WEEKLY))
-    send_to_tg_chatroom(generateScannerFromJson('data/list_ETFList.json', TimeFrame.WEEKLY))
-    send_to_tg_chatroom(generateScannerFromJson('data/list_FXList.json', TimeFrame.WEEKLY)) 
+    #send_to_tg_chatroom(generateScannerFromJson('data/list_IndexList.json', TimeFrame.WEEKLY))
+    #send_to_tg_chatroom(generateScannerFromJson('data/list_ETFList.json', TimeFrame.WEEKLY))
+    #send_to_tg_chatroom(generateScannerFromJson('data/list_FXList.json', TimeFrame.WEEKLY)) 
     
     # Daily
     #send_to_tg_chatroom(generateScannerFromJson('data/list_IndexList.json', TimeFrame.DAILY))
-    #send_to_tg_chatroom(generateScannerFromJson('data/list_ETFList.json', TimeFrame.DAILY))
+    send_to_tg_chatroom(generateScannerFromJson('data/list_ETFList.json', TimeFrame.DAILY))
     #send_to_tg_chatroom(generateScannerFromJson('data/list_FXList.json', TimeFrame.DAILY)) 
     
     #generate_scanner_result("XAU=X", "DAILY")
     #generate_scanner_result("DEXJPUS", "DAILY", 'fred')
     #generate_scanner_result("3017.HK", "DAILY")
     #generate_scanner_result("AUD=X", "DAILY")
-    #generate_scanner_result("0012.HK", "WEEKLY")
+    #generate_scanner_result("0012.HK", "DAILY")
 
     
     

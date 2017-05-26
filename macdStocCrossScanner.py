@@ -429,14 +429,20 @@ def generate_scanner_result(symbol, period, datasrc='yahoo_direct'):
     
     #print(signals.to_string())
     
+    #print("DLS:  " + str(len(signals.ix[signals.stoch_positions == 1.0].index)))
+    
     if(len(signals.ix[signals.stoch_positions == 1.0].index) > 0):    
     
         then = signals.ix[signals.stoch_positions == 1.0].index[-1].date()
         now = datetime.now().date()
         difference =  (now - then) / timedelta(days=1)
         
-        if (difference < 15):
-            print(symbol + " " + period + ": [" + str(then) + ", " +  str(difference) + " days ago @ Stoch, avg vol: [" + signals['vol'].mean() + "]")
+        mean_turnover = signals['turnover'].mean()
+        
+        #print(symbol + " - Difference:  " + str(difference))
+        
+        if (difference < 20):
+            print(symbol + " " + period + ": [" + str(then) + ", " +  str(difference) + " days ago at Stoch, avg vol: [" + str(mean_turnover) + "]")
             result.append(command + symbol.replace(".HK", "") + " " + period + ": [" + str(then) + ", " +  str(difference) + " days ago]")
             result.append(generate_scanner_chart(symbol, period, bars, signals)[0])
 
@@ -513,7 +519,7 @@ def generateScannerFromJson(jsonPath, tfEnum):
             # have data
             if (len(result) > 0):
                 if (not code in signalDict):
-                    print(result[0])
+                    #print(result[0])
                     result_list = result_list + result[0] + EL
                     signalDict[code] = "Yes"
                 
@@ -530,8 +536,8 @@ if __name__ == "__main__":
     #send_to_tg_chatroom(generateScannerFromJson('data/list_FXList.json', TimeFrame.WEEKLY)) 
     
     # Daily
-    #send_to_tg_chatroom(generateScannerFromJson('data/list_IndexList.json', TimeFrame.DAILY))
-    send_to_tg_chatroom(generateScannerFromJson('data/list_ETFList.json', TimeFrame.DAILY))
+    send_to_tg_chatroom(generateScannerFromJson('data/list_IndexList.json', TimeFrame.DAILY))
+    #send_to_tg_chatroom(generateScannerFromJson('data/list_ETFList.json', TimeFrame.DAILY))
     #send_to_tg_chatroom(generateScannerFromJson('data/list_FXList.json', TimeFrame.DAILY)) 
     
     #generate_scanner_result("XAU=X", "DAILY")

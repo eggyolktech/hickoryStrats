@@ -431,32 +431,37 @@ def generate_scanner_result(symbol, period, datasrc='yahoo_direct'):
     
     #print("DLS:  " + str(len(signals.ix[signals.stoch_positions == 1.0].index)))
     
+    mean_turnover = signals['turnover'].mean()
+    stoch_result = None
+    macd_result = None
+    
     if(len(signals.ix[signals.stoch_positions == 1.0].index) > 0):    
     
         then = signals.ix[signals.stoch_positions == 1.0].index[-1].date()
         now = datetime.now().date()
         difference =  (now - then) / timedelta(days=1)
         
-        mean_turnover = signals['turnover'].mean()
-        
         #print(symbol + " - Difference:  " + str(difference))
         
         if (difference < 20):
             print(symbol + " " + period + ": [" + str(then) + ", " +  str(difference) + " days ago at Stoch, avg vol: [" + str(mean_turnover) + "]")
-            result.append(command + symbol.replace(".HK", "") + " " + period + ": [" + str(then) + ", " +  str(difference) + " days ago]")
-            result.append(generate_scanner_chart(symbol, period, bars, signals)[0])
-
+            stoch_result = command + symbol.replace(".HK", "") + " " + period + ": [" + str(then) + ", " +  str(difference) + " days ago]"
+           
     if(len(signals.ix[signals.macd_positions == 1.0].index) > 0):    
     
         then = signals.ix[signals.macd_positions == 1.0].index[-1].date()
         now = datetime.now().date()
         difference =  (now - then) / timedelta(days=1)
         
-        mean_turnover = signals['turnover'].mean()
-        
         if (difference < 15):
             print(symbol + " " + period + ": [" + str(then) + ", " +  str(difference) + " days ago at MACD, avg turnover: [" + str(mean_turnover) + "]")
+            macd_result = symbol + " " + period + ": [" + str(then) + ", " +  str(difference) + " days ago at MACD, avg turnover: [" + str(mean_turnover) + "]"
 
+    if (stoch_result and macd_result):
+        chart_path = generate_scanner_chart(symbol, period, bars, signals)[0]
+        result.append(stoch_result + DEL + macd_result)
+        result.append(chart_path)
+            
     #print("result: " + symbol + " - " + str(result))
     return result
 
@@ -513,7 +518,7 @@ def generateScannerFromJson(jsonPath, tfEnum):
                 result = generate_scanner_result(code, tfEnum.name)
             except:
                 logging.error(" Error getting code: " + code)
-                #logging.error(traceback.format_exc())
+                logging.error(traceback.format_exc())
                 result = ""            
             
             # have data

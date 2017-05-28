@@ -408,7 +408,7 @@ def generate_scanner_result(symbol, period, datasrc='yahoo_direct'):
         bars = retrieve_bars_data(symbol, datasrc, start, end)
     except:
         logging.error(" Error retrieving code: " + symbol)
-        logging.error(traceback.format_exc())
+        #logging.error(traceback.format_exc())
         return result
 
     #print(bars.to_string())
@@ -443,9 +443,9 @@ def generate_scanner_result(symbol, period, datasrc='yahoo_direct'):
         
         #print(symbol + " - Difference:  " + str(difference))
         
-        if (difference < 20):
+        if (difference < 30):
             print(symbol + " " + period + ": [" + str(then) + ", " +  str(difference) + " days ago at Stoch, avg vol: [" + str(mean_turnover) + "]")
-            stoch_result = command + symbol.replace(".HK", "") + " " + period + ": [" + str(then) + ", " +  str(difference) + " days ago]"
+            stoch_result =  "Stoc Xover at [" + str(then) + ", " +  str(difference) + " days ago]"
            
     if(len(signals.ix[signals.macd_positions == 1.0].index) > 0):    
     
@@ -453,13 +453,14 @@ def generate_scanner_result(symbol, period, datasrc='yahoo_direct'):
         now = datetime.now().date()
         difference =  (now - then) / timedelta(days=1)
         
-        if (difference < 15):
+        if (difference < 25):
             print(symbol + " " + period + ": [" + str(then) + ", " +  str(difference) + " days ago at MACD, avg turnover: [" + str(mean_turnover) + "]")
-            macd_result = symbol + " " + period + ": [" + str(then) + ", " +  str(difference) + " days ago at MACD, avg turnover: [" + str(mean_turnover) + "]"
+            macd_result = "Macd Xover at [" + str(then) + ", " +  str(difference) + " days ago]"
 
     if (stoch_result and macd_result):
         chart_path = generate_scanner_chart(symbol, period, bars, signals)[0]
-        result.append(stoch_result + DEL + macd_result)
+        turnover = "Avg Turnover: [" + str(mean_turnover) + "]"
+        result.append(command + symbol.replace(".HK", "") + " " + period + EL + stoch_result + EL + macd_result + EL + turnover)
         result.append(chart_path)
             
     #print("result: " + symbol + " - " + str(result))
@@ -499,13 +500,15 @@ def generateScannerFromJson(jsonPath, tfEnum):
         print ("\n============================================================================== " + list["code"] + " (" + list["label"] + ")")
         result_list = ""
         
-        for stock in list["list"][0:1]:    
+        for stock in list["list"]:    
 
             code = stock["code"].lstrip("0");
 
             if (is_number(code)):
                 code = code.rjust(4, '0') + ".HK"  
-
+            
+            #print (code + " <<<")
+            
             #try:
                 #print (code + " (" + stock["label"] + ")")
             #except:
@@ -518,7 +521,7 @@ def generateScannerFromJson(jsonPath, tfEnum):
                 result = generate_scanner_result(code, tfEnum.name)
             except:
                 logging.error(" Error getting code: " + code)
-                logging.error(traceback.format_exc())
+                #logging.error(traceback.format_exc())
                 result = ""            
             
             # have data
@@ -542,12 +545,12 @@ if __name__ == "__main__":
     
     # Daily
     send_to_tg_chatroom(generateScannerFromJson('data/list_IndexList.json', TimeFrame.DAILY))
-    #send_to_tg_chatroom(generateScannerFromJson('data/list_ETFList.json', TimeFrame.DAILY))
-    #send_to_tg_chatroom(generateScannerFromJson('data/list_FXList.json', TimeFrame.DAILY)) 
+    send_to_tg_chatroom(generateScannerFromJson('data/list_ETFList.json', TimeFrame.DAILY))
+    send_to_tg_chatroom(generateScannerFromJson('data/list_FXList.json', TimeFrame.DAILY)) 
     
     #generate_scanner_result("XAU=X", "DAILY")
     #generate_scanner_result("DEXJPUS", "DAILY", 'fred')
-    #generate_scanner_result("3017.HK", "DAILY")
+    #generate_scanner_result("0489.HK", "DAILY")
     #generate_scanner_result("AUD=X", "DAILY")
     #generate_scanner_result("0012.HK", "DAILY")
 

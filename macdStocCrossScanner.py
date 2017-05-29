@@ -495,7 +495,7 @@ def generateScannerFromJson(jsonPath, tfEnum):
     with open(jsonPath, encoding="utf-8") as data_file:    
         lists = json.load(data_file)              
 
-    for list in lists:
+    for list in lists[0:7]:
         #break
         print ("\n============================================================================== " + list["code"] + " (" + list["label"] + ")")
         result_list = ""

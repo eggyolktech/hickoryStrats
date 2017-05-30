@@ -538,15 +538,19 @@ def generateScannerFromJson(jsonPath, tfEnum):
         
 if __name__ == "__main__":
 
-    # Weekly
-    #send_to_tg_chatroom(generateScannerFromJson('data/list_IndexList.json', TimeFrame.WEEKLY))
-    #send_to_tg_chatroom(generateScannerFromJson('data/list_ETFList.json', TimeFrame.WEEKLY))
-    #send_to_tg_chatroom(generateScannerFromJson('data/list_FXList.json', TimeFrame.WEEKLY)) 
-    
-    # Daily
-    send_to_tg_chatroom(generateScannerFromJson('data/list_IndexList.json', TimeFrame.DAILY))
-    send_to_tg_chatroom(generateScannerFromJson('data/list_ETFList.json', TimeFrame.DAILY))
-    send_to_tg_chatroom(generateScannerFromJson('data/list_FXList.json', TimeFrame.DAILY)) 
+    weekno = datetime.today().weekday()
+    tf = TimeFrame.DAILY
+
+    if weekno < 5:
+        print("Run Daily Scanner on Weekday ......")
+        tf = TimeFrame.DAILY
+    else:
+        print("Run Weekly Scanner on Weekend ......")
+        tf = TimeFrame.WEEKLY
+
+    send_to_tg_chatroom(generateScannerFromJson('data/list_IndexList.json', tf))
+    send_to_tg_chatroom(generateScannerFromJson('data/list_ETFList.json', tf))
+    send_to_tg_chatroom(generateScannerFromJson('data/list_FXList.json', tf))
     
     #generate_scanner_result("XAU=X", "DAILY")
     #generate_scanner_result("DEXJPUS", "DAILY", 'fred')

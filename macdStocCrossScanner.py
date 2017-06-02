@@ -16,6 +16,7 @@ import json
 import urllib.request
 import urllib.parse
 import requests
+from urllib.parse import quote
 import re
 import configparser
 import io
@@ -43,20 +44,26 @@ class YahooFinanceSingleton:
             raise YahooFinanceSingleton.__single
         YahooFinanceSingleton.__single = self
         
-        with requests.Session() as session:
+        while True:
         
-            response = session.get('https://finance.yahoo.com/quote/2628.HK/history?p=2628.HK')
-            cookies = session.cookies
+            with requests.Session() as session:
+            
+                response = session.get('https://finance.yahoo.com/quote/2628.HK/history?p=2628.HK')
+                cookies = session.cookies
 
-            regex = '"CrumbStore":{"crumb":"(.+?)"}'
-            pattern = re.compile(regex)
-            getcrumb = re.findall(pattern, str(response.content))
+                regex = '"CrumbStore":{"crumb":"(.+?)"}'
+                pattern = re.compile(regex)
+                getcrumb = re.findall(pattern, str(response.content))
+                crumb = getcrumb[0].replace('\\u002F','/')
+                
+                YahooFinanceSingleton.__cookies = cookies
+                YahooFinanceSingleton.__crumb = crumb
+                
+                print("Session Cookies: [" + str(cookies.get_dict()) + "], Crumb: [" + getcrumb[0] + " ==> " + crumb + "]")  
+
+            if (not crumb == None and "/" not in crumb):
+                break
             
-            YahooFinanceSingleton.__cookies = cookies
-            YahooFinanceSingleton.__crumb = getcrumb[0]
-            
-            #print("Session Cookies: [" + str(cookies.get_dict()) + "], Crumb: [" + getcrumb[0] + "]")     
-    
     def getSingleton():
         if not YahooFinanceSingleton.__single:
             YahooFinanceSingleton.__single = YahooFinanceSingleton()

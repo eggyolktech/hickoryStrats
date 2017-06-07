@@ -450,7 +450,7 @@ def generate_scanner_result(symbol, period, datasrc='yahoo_direct'):
         
         #print(symbol + " - Difference:  " + str(difference))
         
-        if (difference < 30):
+        if (difference < 15):
             print(symbol + " " + period + ": [" + str(then) + ", " +  str(difference) + " days ago at Stoch, avg vol: [" + str(mean_turnover) + "]")
             stoch_result =  "Stoc Xover at [" + str(then) + ", " +  str(difference) + " days ago]"
            
@@ -460,7 +460,7 @@ def generate_scanner_result(symbol, period, datasrc='yahoo_direct'):
         now = datetime.now().date()
         difference =  (now - then) / timedelta(days=1)
         
-        if (difference < 25):
+        if (difference < 15):
             print(symbol + " " + period + ": [" + str(then) + ", " +  str(difference) + " days ago at MACD, avg turnover: [" + str(mean_turnover) + "]")
             macd_result = "Macd Xover at [" + str(then) + ", " +  str(difference) + " days ago]"
 

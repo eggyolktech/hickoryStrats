@@ -28,6 +28,7 @@ config.read('config.properties')
 
 EL = "\n"
 DEL = "\n\n"
+STOC_LOWER_LIMIT = 25
 
 class TimeFrame(Enum):
     MONTHLY = 1
@@ -129,7 +130,7 @@ class MacdStocCrossScanner(Strategy):
         if (len(signals) >= self.stoch_window):
             signals['signal_stoch_x'][self.stoch_window:] = np.where(
                 (signals['k_slow'][self.stoch_window:] > signals['d_slow'][self.stoch_window:])
-                & (signals['k_slow'][self.stoch_window:] <= 20)
+                & (signals['k_slow'][self.stoch_window:] <= STOC_LOWER_LIMIT)
                 , 1.0, 0.0)
         else:
             signals['signal_stoch_x'] = 0.0
@@ -502,7 +503,8 @@ def generateScannerFromJson(jsonPath, tfEnum):
     with open(jsonPath, encoding="utf-8") as data_file:    
         lists = json.load(data_file)              
 
-    for list in lists[0:7]:
+    #for list in lists[0:7]:
+    for list in lists:
         #break
         print ("\n============================================================================== " + list["code"] + " (" + list["label"] + ")")
         result_list = ""
@@ -555,9 +557,10 @@ if __name__ == "__main__":
         print("Run Weekly Scanner on Weekend ......")
         tf = TimeFrame.WEEKLY
 
-    send_to_tg_chatroom(generateScannerFromJson('data/list_IndexList.json', tf))
-    send_to_tg_chatroom(generateScannerFromJson('data/list_ETFList.json', tf))
-    send_to_tg_chatroom(generateScannerFromJson('data/list_FXList.json', tf))
+    send_to_tg_chatroom(generateScannerFromJson('data/list_IndustryList.json', tf))    
+    #send_to_tg_chatroom(generateScannerFromJson('data/list_IndexList.json', tf))
+    #send_to_tg_chatroom(generateScannerFromJson('data/list_ETFList.json', tf))
+    #send_to_tg_chatroom(generateScannerFromJson('data/list_FXList.json', tf))
     
     #generate_scanner_result("XAU=X", "DAILY")
     #generate_scanner_result("DEXJPUS", "DAILY", 'fred')

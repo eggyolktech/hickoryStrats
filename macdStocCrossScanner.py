@@ -1,9 +1,16 @@
 import numpy as np
 import pandas as pd
-import quandl   # Necessary for obtaining financial data easily
+#import quandl   # Necessary for obtaining financial data easily
 import datetime
 from datetime import tzinfo, timedelta, datetime
 import time
+
+import os
+import matplotlib as mpl
+if os.environ.get('DISPLAY','') == '':
+    print('no display found. Using non-interactive Agg backend')
+    mpl.use('Agg')
+
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 import traceback
@@ -29,6 +36,7 @@ config.read('config.properties')
 EL = "\n"
 DEL = "\n\n"
 STOC_LOWER_LIMIT = 25
+MONITOR_PERIOD = 15
 
 class TimeFrame(Enum):
     MONTHLY = 1
@@ -107,8 +115,15 @@ class MacdStocCrossScanner(Strategy):
         # Create the set of short and long simple moving averages over the 
         # respective periods
         signals['close'] = self.bars['Close']
+        self.bars['Volume'] = self.bars['Volume'].replace('null', 0)
         signals['vol'] = self.bars['Volume']
-        signals['turnover'] = self.bars['Close'] * self.bars['Volume'] 
+        
+        #print("[" + self.symbol + "]")
+        #if("0152.HK" == self.symbol):
+            #print(self.bars['Volume'].dtypes)
+            #print(self.bars['Volume'].to_string()) 
+            #print(self.bars['Close'].to_string()) 
+        signals['turnover'] = self.bars['Close'] * self.bars['Volume'].astype(float)
         signals['short_mavg'] = self.bars['Close'].rolling(window=self.short_window, min_periods=1, center=False).mean()
         signals['long_mavg'] = self.bars['Close'].rolling(window=self.long_window, min_periods=1, center=False).mean()
         
@@ -451,7 +466,7 @@ def generate_scanner_result(symbol, period, datasrc='yahoo_direct'):
         
         #print(symbol + " - Difference:  " + str(difference))
         
-        if (difference < 15):
+        if (difference < MONITOR_PERIOD):
             print(symbol + " " + period + ": [" + str(then) + ", " +  str(difference) + " days ago at Stoch, avg vol: [" + str(mean_turnover) + "]")
             stoch_result =  "Stoc Xover at [" + str(then) + ", " +  str(difference) + " days ago]"
            
@@ -461,7 +476,7 @@ def generate_scanner_result(symbol, period, datasrc='yahoo_direct'):
         now = datetime.now().date()
         difference =  (now - then) / timedelta(days=1)
         
-        if (difference < 15):
+        if (difference < MONITOR_PERIOD):
             print(symbol + " " + period + ": [" + str(then) + ", " +  str(difference) + " days ago at MACD, avg turnover: [" + str(mean_turnover) + "]")
             macd_result = "Macd Xover at [" + str(then) + ", " +  str(difference) + " days ago]"
 
@@ -503,8 +518,8 @@ def generateScannerFromJson(jsonPath, tfEnum):
     with open(jsonPath, encoding="utf-8") as data_file:    
         lists = json.load(data_file)              
 
-    #for list in lists[0:7]:
-    for list in lists:
+    for list in lists[0:7]:
+    #for list in lists:
         #break
         print ("\n============================================================================== " + list["code"] + " (" + list["label"] + ")")
         result_list = ""
@@ -529,8 +544,8 @@ def generateScannerFromJson(jsonPath, tfEnum):
             try:
                 result = generate_scanner_result(code, tfEnum.name)
             except:
-                logging.error(" Error getting code: " + code)
-                #logging.error(traceback.format_exc())
+                logging.error(" Error processing code: " + code)
+                logging.error(traceback.format_exc())
                 result = ""            
             
             # have data
@@ -557,14 +572,14 @@ if __name__ == "__main__":
         print("Run Weekly Scanner on Weekend ......")
         tf = TimeFrame.WEEKLY
 
-    send_to_tg_chatroom(generateScannerFromJson('data/list_IndustryList.json', tf))    
-    #send_to_tg_chatroom(generateScannerFromJson('data/list_IndexList.json', tf))
-    #send_to_tg_chatroom(generateScannerFromJson('data/list_ETFList.json', tf))
-    #send_to_tg_chatroom(generateScannerFromJson('data/list_FXList.json', tf))
+    #send_to_tg_chatroom(generateScannerFromJson('data/list_IndustryList.json', tf))    
+    send_to_tg_chatroom(generateScannerFromJson('data/list_IndexList.json', tf))
+    send_to_tg_chatroom(generateScannerFromJson('data/list_ETFList.json', tf))
+    send_to_tg_chatroom(generateScannerFromJson('data/list_FXList.json', tf))
     
     #generate_scanner_result("XAU=X", "DAILY")
     #generate_scanner_result("DEXJPUS", "DAILY", 'fred')
-    #generate_scanner_result("0489.HK", "DAILY")
+    #generate_scanner_result("0152.HK", "DAILY")
     #generate_scanner_result("AUD=X", "DAILY")
     #generate_scanner_result("0012.HK", "DAILY")
 

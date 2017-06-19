@@ -1,3 +1,5 @@
+#!/usr/bin/python
+
 import numpy as np
 import pandas as pd
 #import quandl   # Necessary for obtaining financial data easily
@@ -571,7 +573,8 @@ if __name__ == "__main__":
     else:
         print("Run Weekly Scanner on Weekend ......")
         tf = TimeFrame.WEEKLY
-
+    
+    tf = TimeFrame.WEEKLY
     #send_to_tg_chatroom(generateScannerFromJson('data/list_IndustryList.json', tf))    
     send_to_tg_chatroom(generateScannerFromJson('data/list_IndexList.json', tf))
     send_to_tg_chatroom(generateScannerFromJson('data/list_ETFList.json', tf))

@@ -520,7 +520,7 @@ def generateScannerFromJson(jsonPath, tfEnum):
     with open(jsonPath, encoding="utf-8") as data_file:    
         lists = json.load(data_file)              
 
-    for list in lists[0:7]:
+    for list in lists:
     #for list in lists:
         #break
         print ("\n============================================================================== " + list["code"] + " (" + list["label"] + ")")
@@ -574,7 +574,7 @@ if __name__ == "__main__":
         print("Run Weekly Scanner on Weekend ......")
         tf = TimeFrame.WEEKLY
     
-    tf = TimeFrame.WEEKLY
+    #tf = TimeFrame.WEEKLY
     #send_to_tg_chatroom(generateScannerFromJson('data/list_IndustryList.json', tf))    
     send_to_tg_chatroom(generateScannerFromJson('data/list_IndexList.json', tf))
     send_to_tg_chatroom(generateScannerFromJson('data/list_ETFList.json', tf))

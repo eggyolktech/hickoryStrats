@@ -6,7 +6,7 @@ import pandas as pd
 import datetime
 from datetime import tzinfo, timedelta, datetime
 import time
-
+import resource
 import os
 import matplotlib as mpl
 if os.environ.get('DISPLAY','') == '':
@@ -26,14 +26,11 @@ import urllib.request
 import urllib.parse
 import requests
 from urllib.parse import quote
-import re
-import configparser
 import io
-
 from enum import Enum
 
-config = configparser.ConfigParser()
-config.read('config.properties')
+from hickory.telegram import bot_sender
+from hickory.util import yahoo_session_loader
 
 EL = "\n"
 DEL = "\n\n"
@@ -44,47 +41,6 @@ class TimeFrame(Enum):
     MONTHLY = 1
     WEEKLY = 2
     DAILY = 3
-
-class YahooFinanceSingleton:
-    __single = None
-    __cookies = None
-    __crumb = None
-    
-    def __init__(self):
-        if YahooFinanceSingleton.__single:
-            raise YahooFinanceSingleton.__single
-        YahooFinanceSingleton.__single = self
-        
-        while True:
-        
-            with requests.Session() as session:
-            
-                response = session.get('https://finance.yahoo.com/quote/2628.HK/history?p=2628.HK')
-                cookies = session.cookies
-
-                regex = '"CrumbStore":{"crumb":"(.+?)"}'
-                pattern = re.compile(regex)
-                getcrumb = re.findall(pattern, str(response.content))
-                crumb = getcrumb[0].replace('\\u002F','/')
-                
-                YahooFinanceSingleton.__cookies = cookies
-                YahooFinanceSingleton.__crumb = crumb
-                
-                print("Session Cookies: [" + str(cookies.get_dict()) + "], Crumb: [" + getcrumb[0] + " ==> " + crumb + "]")  
-
-            if (not crumb == None and "/" not in crumb):
-                break
-            
-    def getSingleton():
-        if not YahooFinanceSingleton.__single:
-            YahooFinanceSingleton.__single = YahooFinanceSingleton()
-        return YahooFinanceSingleton.__single
-    
-    def getCookies(self):
-        return YahooFinanceSingleton.__cookies
-        
-    def getCrumb(self):
-        return YahooFinanceSingleton.__crumb
 
 class MacdStocCrossScanner(Strategy):
     """    
@@ -312,9 +268,9 @@ def retrieve_bars_data_from_yahoo(symbol, datasrc, start, end):
     cookies = None
     crumb = None
     
-    singleton = YahooFinanceSingleton.getSingleton()
-    cookies = singleton.getCookies()
-    crumb = singleton.getCrumb()    
+    session = yahoo_session_loader.load()
+    cookies = session.getCookies()
+    crumb = session.getCrumb()    
     
     if (cookies and crumb):
     
@@ -433,7 +389,7 @@ def generate_scanner_result(symbol, period, datasrc='yahoo_direct'):
         bars = retrieve_bars_data(symbol, datasrc, start, end)
     except:
         logging.error(" Error retrieving code: " + symbol)
-        #logging.error(traceback.format_exc())
+        logging.error(traceback.format_exc())
         return result
 
     #print(bars.to_string())
@@ -470,7 +426,7 @@ def generate_scanner_result(symbol, period, datasrc='yahoo_direct'):
         
         if (difference < MONITOR_PERIOD):
             print(symbol + " " + period + ": [" + str(then) + ", " +  str(difference) + " days ago at Stoch, avg vol: [" + str(mean_turnover) + "]")
-            stoch_result =  "Stoc Xover at [" + str(then) + ", " +  str(difference) + " days ago]"
+            stoch_result =  "S" + str(difference)
            
     if(len(signals.ix[signals.macd_positions == 1.0].index) > 0):    
     
@@ -480,12 +436,12 @@ def generate_scanner_result(symbol, period, datasrc='yahoo_direct'):
         
         if (difference < MONITOR_PERIOD):
             print(symbol + " " + period + ": [" + str(then) + ", " +  str(difference) + " days ago at MACD, avg turnover: [" + str(mean_turnover) + "]")
-            macd_result = "Macd Xover at [" + str(then) + ", " +  str(difference) + " days ago]"
+            macd_result = "M" + str(difference)
 
-    if (stoch_result and macd_result):
+    if (stoch_result and macd_result and (mean_turnover == 0 or mean_turnover/1000000>=5)):
         chart_path = generate_scanner_chart(symbol, period, bars, signals)[0]
-        turnover = "Avg Turnover: [" + str(mean_turnover) + "]"
-        result.append(command + symbol.replace(".HK", "") + " " + period + EL + stoch_result + EL + macd_result + EL + turnover)
+        turnover = "$" + str('%.2f' % (mean_turnover/1000000)) + "m"
+        result.append(command + symbol.replace(".HK", "") + " @" + period[:1] + " [" +  stoch_result + ", " + macd_result + ", " + turnover + "]")
         result.append(chart_path)
             
     #print("result: " + symbol + " - " + str(result))
@@ -498,22 +454,12 @@ def is_number(s):
     except ValueError:
         return False
 
-def send_to_tg_chatroom(passage): 
-
-    chat_list = config.items("telegram-chat")
-    bot_send_url = config.get("telegram","bot-send-url")
-    
-    for key, chat_id in chat_list:
-        print("Chat to send: " + key + " => " + chat_id);
-
-        result = urllib.request.urlopen(bot_send_url, urllib.parse.urlencode({ "parse_mode": "HTML", "chat_id": chat_id, "text": passage }).encode("utf-8")).read()
-        
-        print(result)
-
 def generateScannerFromJson(jsonPath, tfEnum):
 
     passage = ""
     passage = "Macstoc Xover @ " + tfEnum.name + " as of " + str(datetime.now().date()) + "" + EL
+    passasge = passage + jsonPath.replace("../data/","") + EL
+
     signalDict = {}
     print(passage)
 
@@ -564,6 +510,16 @@ def generateScannerFromJson(jsonPath, tfEnum):
         
 if __name__ == "__main__":
 
+
+    # Set resource limit
+    rsrc = resource.RLIMIT_DATA
+    soft, hard = resource.getrlimit(rsrc)
+    print('Soft limit start as :' + str(soft))
+
+    resource.setrlimit(rsrc, (100 * 1024, hard))
+    soft, hard = resource.getrlimit(rsrc)
+    print('Soft limit start as :' + str(soft))
+
     weekno = datetime.today().weekday()
     tf = TimeFrame.DAILY
 
@@ -574,11 +530,10 @@ if __name__ == "__main__":
         print("Run Weekly Scanner on Weekend ......")
         tf = TimeFrame.WEEKLY
     
-    #tf = TimeFrame.WEEKLY
-    #send_to_tg_chatroom(generateScannerFromJson('data/list_IndustryList.json', tf))    
-    send_to_tg_chatroom(generateScannerFromJson('data/list_IndexList.json', tf))
-    send_to_tg_chatroom(generateScannerFromJson('data/list_ETFList.json', tf))
-    send_to_tg_chatroom(generateScannerFromJson('data/list_FXList.json', tf))
+    #bot_sender.broadcast(generateScannerFromJson('../data/list_IndustryList.json', tf))    
+    #bot_sender.broadcast(generateScannerFromJson('../data/list_IndexList.json', tf))
+    #bot_sender.broadcast(generateScannerFromJson('../data/list_ETFList.json', tf))
+    bot_sender.broadcast(generateScannerFromJson('../data/list_FXList.json', tf))
     
     #generate_scanner_result("XAU=X", "DAILY")
     #generate_scanner_result("DEXJPUS", "DAILY", 'fred')

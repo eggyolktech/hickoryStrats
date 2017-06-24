@@ -277,7 +277,7 @@ def retrieve_bars_data_from_yahoo(symbol, datasrc, start, end):
         url = 'https://query1.finance.yahoo.com/v7/finance/download/'  + symbol + '?period1=' + start_epoch + '&period2=' + end_epoch + '&interval=1d&events=history&crumb=' + crumb
 
         response = requests.get(url, cookies=cookies)
-        
+        print("url: " + url);        
         #print(response.content.decode("utf-8"))
 
         df = pd.read_csv(io.StringIO(response.content.decode("utf-8")), header=0, sep=',', index_col=0)
@@ -458,7 +458,7 @@ def generateScannerFromJson(jsonPath, tfEnum):
 
     passage = ""
     passage = "Macstoc Xover @ " + tfEnum.name + " as of " + str(datetime.now().date()) + "" + EL
-    passasge = passage + jsonPath.replace("../data/","") + EL
+    passage = passage + jsonPath.replace("../data/","") + EL
 
     signalDict = {}
     print(passage)
@@ -501,7 +501,7 @@ def generateScannerFromJson(jsonPath, tfEnum):
                 if (not code in signalDict):
                     #print(result[0])
                     result_list = result_list + result[0] + EL
-                    signalDict[code] = "Yes"
+                    signalDict[code] = result[0]
                 
         if (len(result_list) > 0):
             passage = passage + EL + list["code"] + " (" + list["label"] + ")" + DEL + result_list
@@ -530,10 +530,10 @@ if __name__ == "__main__":
         print("Run Weekly Scanner on Weekend ......")
         tf = TimeFrame.WEEKLY
     
-    #bot_sender.broadcast(generateScannerFromJson('../data/list_IndustryList.json', tf))    
+    bot_sender.broadcast(generateScannerFromJson('../data/list_IndustryList.json', tf))    
     #bot_sender.broadcast(generateScannerFromJson('../data/list_IndexList.json', tf))
     #bot_sender.broadcast(generateScannerFromJson('../data/list_ETFList.json', tf))
-    bot_sender.broadcast(generateScannerFromJson('../data/list_FXList.json', tf))
+    #bot_sender.broadcast(generateScannerFromJson('../data/list_FXList.json', tf))
     
     #generate_scanner_result("XAU=X", "DAILY")
     #generate_scanner_result("DEXJPUS", "DAILY", 'fred')

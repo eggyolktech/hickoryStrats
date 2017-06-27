@@ -1,0 +1,6 @@
+[telegram]
+bot-id=193192163:AAGC4RFnLmU7uJSbrJFPz1y36202O_NJcDU
+bot-send-url=https://api.telegram.org/bot%(bot-id)s/sendMessage
+
+[telegram-chat]
+chat-goldenwokchaan = -172861420

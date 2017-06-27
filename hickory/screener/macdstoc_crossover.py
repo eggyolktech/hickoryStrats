@@ -277,7 +277,7 @@ def retrieve_bars_data_from_yahoo(symbol, datasrc, start, end):
         url = 'https://query1.finance.yahoo.com/v7/finance/download/'  + symbol + '?period1=' + start_epoch + '&period2=' + end_epoch + '&interval=1d&events=history&crumb=' + crumb
 
         response = requests.get(url, cookies=cookies)
-        print("url: " + url);        
+        #print("url: " + url);        
         #print(response.content.decode("utf-8"))
 
         df = pd.read_csv(io.StringIO(response.content.decode("utf-8")), header=0, sep=',', index_col=0)
@@ -389,7 +389,8 @@ def generate_scanner_result(symbol, period, datasrc='yahoo_direct'):
         bars = retrieve_bars_data(symbol, datasrc, start, end)
     except:
         logging.error(" Error retrieving code: " + symbol)
-        logging.error(traceback.format_exc())
+        #logging.error(traceback.format_exc())
+        #sys.exit(1)
         return result
 
     #print(bars.to_string())
@@ -456,9 +457,10 @@ def is_number(s):
 
 def generateScannerFromJson(jsonPath, tfEnum):
 
+    filetype = jsonPath.replace("../data/","").replace(".json","")
     passage = ""
     passage = "Macstoc Xover @ " + tfEnum.name + " as of " + str(datetime.now().date()) + "" + EL
-    passage = passage + jsonPath.replace("../data/","") + EL
+    passage = passage + filetype + EL
 
     signalDict = {}
     print(passage)
@@ -506,7 +508,40 @@ def generateScannerFromJson(jsonPath, tfEnum):
         if (len(result_list) > 0):
             passage = passage + EL + list["code"] + " (" + list["label"] + ")" + DEL + result_list
     
+    # Save signalDict to JS file 
+    saveSignalDictToJs(signalDict, tfEnum, filetype)
     return passage
+
+def saveSignalDictToJs(signalDict, tfEnum, filetype):
+
+    print(tfEnum.name)
+    datestr = tfEnum.name + "_" + datetime.today().strftime('%Y%m%d')
+    
+    masterdata = {}
+    datalist = {}
+    list_data = []
+    list_datalist = []
+    
+    for key, value in signalDict.items():
+        if ("=" in key):
+            # not generate for FX case
+            return
+        print(key + " - " + value)
+        stock = {}
+        stock["code"] = key
+        stock["label"] = value
+        list_data.append(stock)
+
+    datalist["code"] = datestr
+    datalist["label"] = datestr
+    datalist["list"] = list_data
+    list_datalist.append(datalist)
+    masterdata["list"] = list_datalist
+    json_data = json.dumps(masterdata)
+    print(json_data)
+    
+    with open('watcher.js.' + filetype + '.tmp', 'a') as the_file:
+        the_file.write("var dailyWatchListData =" + json_data + ";")         
         
 if __name__ == "__main__":
 
@@ -530,10 +565,11 @@ if __name__ == "__main__":
         print("Run Weekly Scanner on Weekend ......")
         tf = TimeFrame.WEEKLY
     
+    tf = TimeFrame.DAILY
     bot_sender.broadcast(generateScannerFromJson('../data/list_IndustryList.json', tf))    
     #bot_sender.broadcast(generateScannerFromJson('../data/list_IndexList.json', tf))
-    #bot_sender.broadcast(generateScannerFromJson('../data/list_ETFList.json', tf))
-    #bot_sender.broadcast(generateScannerFromJson('../data/list_FXList.json', tf))
+    bot_sender.broadcast(generateScannerFromJson('../data/list_ETFList.json', tf))
+    bot_sender.broadcast(generateScannerFromJson('../data/list_FXList.json', tf))
     
     #generate_scanner_result("XAU=X", "DAILY")
     #generate_scanner_result("DEXJPUS", "DAILY", 'fred')

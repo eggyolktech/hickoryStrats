@@ -87,3 +87,9 @@ ENV/
 
 # Rope project settings
 .ropeproject
+
+# config.properties
+config.properties
+
+# interim tmp file
+.tmp

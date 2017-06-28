@@ -31,11 +31,12 @@ from enum import Enum
 
 from hickory.telegram import bot_sender
 from hickory.util import yahoo_session_loader
+from hickory.util import ftp_uploader
 
 EL = "\n"
 DEL = "\n\n"
-STOC_LOWER_LIMIT = 25
-MONITOR_PERIOD = 15
+STOC_LOWER_LIMIT = 25 
+MONITOR_PERIOD = 20
 
 class TimeFrame(Enum):
     MONTHLY = 1
@@ -263,6 +264,8 @@ def retrieve_bars_data_from_yahoo(symbol, datasrc, start, end):
     start_epoch = str(start.timestamp()).split(".")[0]
     end_epoch = str(end.timestamp()).split(".")[0]
     
+    symbol = symbol.replace(".US", "")
+
     #print("Retrieving data for [" + symbol + "] from " + str(start_epoch) + " to " + str(end_epoch))
 
     cookies = None
@@ -389,11 +392,12 @@ def generate_scanner_result(symbol, period, datasrc='yahoo_direct'):
         bars = retrieve_bars_data(symbol, datasrc, start, end)
     except:
         logging.error(" Error retrieving code: " + symbol)
-        #logging.error(traceback.format_exc())
+        logging.error(traceback.format_exc())
         #sys.exit(1)
         return result
 
     #print(bars.to_string())
+    bars = bars[~bars.index.duplicated(keep='first')]
     
     command = "/qd"
     if (period == "WEEKLY"):
@@ -457,7 +461,7 @@ def is_number(s):
 
 def generateScannerFromJson(jsonPath, tfEnum):
 
-    filetype = jsonPath.replace("../data/","").replace(".json","")
+    filetype = jsonPath.replace("../data/","").replace("list_", "").replace(".json","")
     passage = ""
     passage = "Macstoc Xover @ " + tfEnum.name + " as of " + str(datetime.now().date()) + "" + EL
     passage = passage + filetype + EL
@@ -540,11 +544,16 @@ def saveSignalDictToJs(signalDict, tfEnum, filetype):
     json_data = json.dumps(masterdata)
     print(json_data)
     
-    with open('watcher.js.' + filetype + '.tmp', 'a') as the_file:
-        the_file.write("var dailyWatchListData =" + json_data + ";")         
-        
+    filepfx = tfEnum.name.lower() + 'Watcher' + filetype + "Data"
+    filepath = filepfx + '.js.tmp' 
+    
+    with open(filepath, 'a') as the_file:
+        the_file.write("var " + filepfx + " =" + json_data + ";")         
+     
+    # upload to scicube
+    ftp_uploader.upload_to_scicube(filepath)    
+   
 if __name__ == "__main__":
-
 
     # Set resource limit
     rsrc = resource.RLIMIT_DATA
@@ -565,10 +574,12 @@ if __name__ == "__main__":
         print("Run Weekly Scanner on Weekend ......")
         tf = TimeFrame.WEEKLY
     
-    tf = TimeFrame.DAILY
-    bot_sender.broadcast(generateScannerFromJson('../data/list_IndustryList.json', tf))    
+    tf = TimeFrame.WEEKLY
+    #bot_sender.broadcast(generateScannerFromJson('../data/list_IndustryList.json', tf))    
     #bot_sender.broadcast(generateScannerFromJson('../data/list_IndexList.json', tf))
-    bot_sender.broadcast(generateScannerFromJson('../data/list_ETFList.json', tf))
+    bot_sender.broadcast(generateScannerFromJson('../data/list_USIndexList.json', tf))
+
+    #bot_sender.broadcast(generateScannerFromJson('../data/list_ETFList.json', tf))
     bot_sender.broadcast(generateScannerFromJson('../data/list_FXList.json', tf))
     
     #generate_scanner_result("XAU=X", "DAILY")

@@ -92,4 +92,4 @@ ENV/
 config.properties
 
 # interim tmp file
-.tmp
+.js.tmp

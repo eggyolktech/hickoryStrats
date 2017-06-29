@@ -1,3 +1,5 @@
+#!/usr/bin/python
+
 import numpy as np
 import pandas as pd
 import quandl   # Necessary for obtaining financial data easily
@@ -6,7 +8,7 @@ import matplotlib.pyplot as plt
 #import seaborn as sns
 
 from pandas_datareader import data as web, wb
-from hickoryBase import Strategy, Portfolio
+from hickory.core.hickory_base import Strategy, Portfolio
 
 class MovingAverageCrossStrategy(Strategy):
     """    

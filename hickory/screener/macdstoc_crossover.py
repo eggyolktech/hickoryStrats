@@ -19,7 +19,7 @@ import traceback
 import logging
 
 from pandas_datareader import data as web, wb
-from hickoryBase import Strategy
+#from hickoryBase import Strategy
 import json
 
 import urllib.request
@@ -29,9 +29,9 @@ from urllib.parse import quote
 import io
 from enum import Enum
 
+from hickory.core.hickory_base import Strategy
 from hickory.telegram import bot_sender
-from hickory.util import yahoo_session_loader
-from hickory.util import ftp_uploader
+from hickory.util import yahoo_session_loader, ftp_uploader, git_util
 
 EL = "\n"
 DEL = "\n\n"
@@ -472,7 +472,7 @@ def generateScannerFromJson(jsonPath, tfEnum):
     with open(jsonPath, encoding="utf-8") as data_file:    
         lists = json.load(data_file)              
 
-    for list in lists:
+    for list in lists[0:2]:
     #for list in lists:
         #break
         print ("\n============================================================================== " + list["code"] + " (" + list["label"] + ")")
@@ -543,15 +543,22 @@ def saveSignalDictToJs(signalDict, tfEnum, filetype):
     masterdata["list"] = list_datalist
     json_data = json.dumps(masterdata)
     print(json_data)
-    
+   
+    fileroot = "/app/hickoryStratsWatcher/"
+    filesub = "web/js/"
+    filedir = fileroot + filesub 
     filepfx = tfEnum.name.lower() + 'Watcher' + filetype + "Data"
-    filepath = filepfx + '.js.tmp' 
+    filepath = filepfx + '.js' 
     
-    with open(filepath, 'a') as the_file:
+    with open(filedir + filepath, 'w') as the_file:
+        the_file.write("//" + str(datetime.today()) + EL)
         the_file.write("var " + filepfx + " =" + json_data + ";")         
      
     # upload to scicube
-    ftp_uploader.upload_to_scicube(filepath)    
+    ftp_uploader.upload_to_scicube(filedir + filepath)
+
+    # push to git
+    git_util.push(fileroot, [filesub + filepath])    
    
 if __name__ == "__main__":
 
@@ -574,13 +581,13 @@ if __name__ == "__main__":
         print("Run Weekly Scanner on Weekend ......")
         tf = TimeFrame.WEEKLY
     
-    tf = TimeFrame.WEEKLY
+    tf = TimeFrame.DAILY
     #bot_sender.broadcast(generateScannerFromJson('../data/list_IndustryList.json', tf))    
-    #bot_sender.broadcast(generateScannerFromJson('../data/list_IndexList.json', tf))
+    bot_sender.broadcast(generateScannerFromJson('../data/list_IndexList.json', tf))
     bot_sender.broadcast(generateScannerFromJson('../data/list_USIndexList.json', tf))
 
-    #bot_sender.broadcast(generateScannerFromJson('../data/list_ETFList.json', tf))
-    bot_sender.broadcast(generateScannerFromJson('../data/list_FXList.json', tf))
+    bot_sender.broadcast(generateScannerFromJson('../data/list_ETFList.json', tf))
+    #bot_sender.broadcast(generateScannerFromJson('../data/list_FXList.json', tf))
     
     #generate_scanner_result("XAU=X", "DAILY")
     #generate_scanner_result("DEXJPUS", "DAILY", 'fred')

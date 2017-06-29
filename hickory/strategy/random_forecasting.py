@@ -1,3 +1,5 @@
+#!/usr/bin/python
+
 import numpy as np
 import pandas as pd
 import quandl   # Necessary for obtaining financial data easily
@@ -5,7 +7,7 @@ import datetime
 import matplotlib.pyplot as plt
 
 from pandas_datareader import data, wb
-from hickoryBase import Strategy, Portfolio
+from hickory.core.hickory_base import Strategy, Portfolio
 
 class RandomForecastingStrategy(Strategy):
     """Derives from Strategy to produce a set of signals that

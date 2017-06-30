@@ -19,7 +19,6 @@ import traceback
 import logging
 
 from pandas_datareader import data as web, wb
-#from hickoryBase import Strategy
 import json
 
 import urllib.request
@@ -37,6 +36,7 @@ EL = "\n"
 DEL = "\n\n"
 STOC_LOWER_LIMIT = 25 
 MONITOR_PERIOD = 20
+EXPORT_REPO = "/app/hickoryStratsWatcher/"
 
 class TimeFrame(Enum):
     MONTHLY = 1
@@ -446,7 +446,7 @@ def generate_scanner_result(symbol, period, datasrc='yahoo_direct'):
     if (stoch_result and macd_result and (mean_turnover == 0 or mean_turnover/1000000>=5)):
         chart_path = generate_scanner_chart(symbol, period, bars, signals)[0]
         turnover = "$" + str('%.2f' % (mean_turnover/1000000)) + "m"
-        result.append(command + symbol.replace(".HK", "") + " @" + period[:1] + " [" +  stoch_result + ", " + macd_result + ", " + turnover + "]")
+        result.append(command + symbol.replace(".HK", "") + " @" + period[:1] + " [" +  stoch_result.replace(".0", "") + ", " + macd_result.replace(".0","") + ", " + turnover + "]")
         result.append(chart_path)
             
     #print("result: " + symbol + " - " + str(result))
@@ -472,8 +472,8 @@ def generateScannerFromJson(jsonPath, tfEnum):
     with open(jsonPath, encoding="utf-8") as data_file:    
         lists = json.load(data_file)              
 
-    for list in lists[0:2]:
-    #for list in lists:
+    #for list in lists[0:2]:
+    for list in lists:
         #break
         print ("\n============================================================================== " + list["code"] + " (" + list["label"] + ")")
         result_list = ""
@@ -519,7 +519,7 @@ def generateScannerFromJson(jsonPath, tfEnum):
 def saveSignalDictToJs(signalDict, tfEnum, filetype):
 
     print(tfEnum.name)
-    datestr = tfEnum.name + "_" + datetime.today().strftime('%Y%m%d')
+    datestr = tfEnum.name + "_" + filetype + "_" + datetime.today().strftime('%y%m%d')
     
     masterdata = {}
     datalist = {}
@@ -532,8 +532,8 @@ def saveSignalDictToJs(signalDict, tfEnum, filetype):
             return
         print(key + " - " + value)
         stock = {}
-        stock["code"] = key
-        stock["label"] = value
+        stock["code"] = key.replace(".HK","")
+        stock["label"] = value.split("@")[1]
         list_data.append(stock)
 
     datalist["code"] = datestr
@@ -544,9 +544,8 @@ def saveSignalDictToJs(signalDict, tfEnum, filetype):
     json_data = json.dumps(masterdata)
     print(json_data)
    
-    fileroot = "/app/hickoryStratsWatcher/"
     filesub = "web/js/"
-    filedir = fileroot + filesub 
+    filedir = EXPORT_REPO + filesub 
     filepfx = tfEnum.name.lower() + 'Watcher' + filetype + "Data"
     filepath = filepfx + '.js' 
     
@@ -557,8 +556,8 @@ def saveSignalDictToJs(signalDict, tfEnum, filetype):
     # upload to scicube
     ftp_uploader.upload_to_scicube(filedir + filepath)
 
-    # push to git
-    git_util.push(fileroot, [filesub + filepath])    
+    # commit to git
+    git_util.commit(EXPORT_REPO, [filesub + filepath])    
    
 if __name__ == "__main__":
 
@@ -581,14 +580,24 @@ if __name__ == "__main__":
         print("Run Weekly Scanner on Weekend ......")
         tf = TimeFrame.WEEKLY
     
-    tf = TimeFrame.DAILY
-    #bot_sender.broadcast(generateScannerFromJson('../data/list_IndustryList.json', tf))    
+    # Industry Track
+    bot_sender.broadcast(generateScannerFromJson('../data/list_IndustryList.json', tf))    
+    bot_sender.broadcast(generateScannerFromJson('../data/list_USIndustryList.json', tf))    
+
+    # Index Track
     bot_sender.broadcast(generateScannerFromJson('../data/list_IndexList.json', tf))
     bot_sender.broadcast(generateScannerFromJson('../data/list_USIndexList.json', tf))
 
+    # ETF Track
     bot_sender.broadcast(generateScannerFromJson('../data/list_ETFList.json', tf))
-    #bot_sender.broadcast(generateScannerFromJson('../data/list_FXList.json', tf))
+    bot_sender.broadcast(generateScannerFromJson('../data/list_USETFList.json', tf))
     
+    # FX Track
+    bot_sender.broadcast(generateScannerFromJson('../data/list_FXList.json', tf))
+
+    # git push to remote for all committed data files    
+    git_util.push_remote(EXPORT_REPO)
+ 
     #generate_scanner_result("XAU=X", "DAILY")
     #generate_scanner_result("DEXJPUS", "DAILY", 'fred')
     #generate_scanner_result("0152.HK", "DAILY")

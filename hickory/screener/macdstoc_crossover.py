@@ -30,12 +30,14 @@ from enum import Enum
 
 from hickory.core.hickory_base import Strategy
 from hickory.telegram import bot_sender
-from hickory.util import yahoo_session_loader, ftp_uploader, git_util
+from hickory.util import yahoo_session_loader, ftp_uploader, git_util, mem_util
+from market_watch import quick_tracker
 
 EL = "\n"
 DEL = "\n\n"
 STOC_LOWER_LIMIT = 25 
 MONITOR_PERIOD = 20
+MIN_TURNOVER = 10
 EXPORT_REPO = "/app/hickoryStratsWatcher/"
 
 class TimeFrame(Enum):
@@ -433,8 +435,10 @@ def generate_scanner_result(symbol, period, datasrc='yahoo_direct'):
             print(symbol + " " + period + ": [" + str(then) + ", " +  str(difference) + " days ago at Stoch, avg vol: [" + str(mean_turnover) + "]")
             stoch_result =  "S" + str(difference)
            
-    if(len(signals.ix[signals.macd_positions == 1.0].index) > 0):    
-    
+    if(len(signals.ix[signals.macd_positions == 1.0].index) > 0 ):    
+        
+        print(signals.tail(1))
+         
         then = signals.ix[signals.macd_positions == 1.0].index[-1].date()
         now = datetime.now().date()
         difference =  (now - then) / timedelta(days=1)
@@ -443,8 +447,8 @@ def generate_scanner_result(symbol, period, datasrc='yahoo_direct'):
             print(symbol + " " + period + ": [" + str(then) + ", " +  str(difference) + " days ago at MACD, avg turnover: [" + str(mean_turnover) + "]")
             macd_result = "M" + str(difference)
 
-    if (stoch_result and macd_result and (mean_turnover == 0 or mean_turnover/1000000>=5)):
-        chart_path = generate_scanner_chart(symbol, period, bars, signals)[0]
+    if (stoch_result and macd_result and (mean_turnover == 0 or mean_turnover/1000000>=MIN_TURNOVER)):
+        chart_path = "" #generate_scanner_chart(symbol, period, bars, signals)[0]
         turnover = "$" + str('%.2f' % (mean_turnover/1000000)) + "m"
         result.append(command + symbol.replace(".HK", "") + " @" + period[:1] + " [" +  stoch_result.replace(".0", "") + ", " + macd_result.replace(".0","") + ", " + turnover + "]")
         result.append(chart_path)
@@ -461,6 +465,7 @@ def is_number(s):
 
 def generateScannerFromJson(jsonPath, tfEnum):
 
+    #return "Test Mode"
     filetype = jsonPath.replace("../data/","").replace("list_", "").replace(".json","")
     passage = ""
     passage = "Macstoc Xover @ " + tfEnum.name + " as of " + str(datetime.now().date()) + "" + EL
@@ -514,11 +519,19 @@ def generateScannerFromJson(jsonPath, tfEnum):
     
     # Save signalDict to JS file 
     saveSignalDictToJs(signalDict, tfEnum, filetype)
+    
     return passage
 
 def saveSignalDictToJs(signalDict, tfEnum, filetype):
 
-    print(tfEnum.name)
+    #print(tfEnum.name)
+    
+    # if dict is empty, script
+    if (not signalDict):
+        return
+    else:
+        dictcount = len(signalDict)
+
     datestr = tfEnum.name + "_" + filetype + "_" + datetime.today().strftime('%y%m%d')
     
     masterdata = {}
@@ -533,11 +546,14 @@ def saveSignalDictToJs(signalDict, tfEnum, filetype):
         print(key + " - " + value)
         stock = {}
         stock["code"] = key.replace(".HK","")
-        stock["label"] = value.split("@")[1]
+        if ("@" in value):
+            stock["label"] = value.split("@")[1]
+        else:
+            stock["label"] = value
         list_data.append(stock)
 
     datalist["code"] = datestr
-    datalist["label"] = datestr
+    datalist["label"] = datestr + "_" + str(dictcount)
     datalist["list"] = list_data
     list_datalist.append(datalist)
     masterdata["list"] = list_datalist
@@ -555,20 +571,15 @@ def saveSignalDictToJs(signalDict, tfEnum, filetype):
      
     # upload to scicube
     ftp_uploader.upload_to_scicube(filedir + filepath)
-
+    
+    print("File dumped: [" + filesub + filepath + "]")
+    
     # commit to git
-    git_util.commit(EXPORT_REPO, [filesub + filepath])    
+    # git_util.commit(EXPORT_REPO, [filesub + filepath])    
    
 if __name__ == "__main__":
-
-    # Set resource limit
-    rsrc = resource.RLIMIT_DATA
-    soft, hard = resource.getrlimit(rsrc)
-    print('Soft limit start as :' + str(soft))
-
-    resource.setrlimit(rsrc, (100 * 1024, hard))
-    soft, hard = resource.getrlimit(rsrc)
-    print('Soft limit start as :' + str(soft))
+    
+    mem_util.set_max_mem(100)
 
     weekno = datetime.today().weekday()
     tf = TimeFrame.DAILY
@@ -579,23 +590,27 @@ if __name__ == "__main__":
     else:
         print("Run Weekly Scanner on Weekend ......")
         tf = TimeFrame.WEEKLY
-    
-    # Industry Track
-    bot_sender.broadcast(generateScannerFromJson('../data/list_IndustryList.json', tf))    
-    bot_sender.broadcast(generateScannerFromJson('../data/list_USIndustryList.json', tf))    
 
-    # Index Track
-    bot_sender.broadcast(generateScannerFromJson('../data/list_IndexList.json', tf))
-    bot_sender.broadcast(generateScannerFromJson('../data/list_USIndexList.json', tf))
+    jsonlist = [ 
+        '../data/list_IndustryList.json',
+        '../data/list_USIndustryList.json',
+        '../data/list_IndexList.json',
+        '../data/list_USIndexList.json',
+        '../data/list_ETFList.json',
+        '../data/list_USETFList.json',
+        '../data/list_FXList.json'
+    ]
 
-    # ETF Track
-    bot_sender.broadcast(generateScannerFromJson('../data/list_ETFList.json', tf))
-    bot_sender.broadcast(generateScannerFromJson('../data/list_USETFList.json', tf))
-    
-    # FX Track
-    bot_sender.broadcast(generateScannerFromJson('../data/list_FXList.json', tf))
+    # For Standard List
+    for jsonfile in jsonlist:
+        bot_sender.broadcast(generateScannerFromJson(jsonfile, tf))
+
+    # Save signalDict to JS file
+    saveSignalDictToJs(quick_tracker.load_dict("HK"), TimeFrame.DAILY, "TrackList")
+    saveSignalDictToJs(quick_tracker.load_dict("US"), TimeFrame.DAILY, "USTrackList")
 
     # git push to remote for all committed data files    
+    git_util.commitAll(EXPORT_REPO)
     git_util.push_remote(EXPORT_REPO)
  
     #generate_scanner_result("XAU=X", "DAILY")

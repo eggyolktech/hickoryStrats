@@ -16,6 +16,18 @@ def commit(repo_dir, file_list):
     repo.index.commit(commit_message)
     print("git commit completed")
 
+def commitAll(repo_dir):
+    
+    print("git commit started at repo: " + repo_dir)
+    #print(file_list)
+    repo = Repo(repo_dir)
+    git = repo.git
+    commit_message = 'Daily watch list files commit all'
+    git.add("-A")
+    git.commit("-am", commit_message)
+    print("git commit all completed")
+
+
 def push_remote(repo_dir):
 
     print("git push to remote at repo: " + repo_dir)
@@ -31,7 +43,8 @@ def main():
     ]
    
     repo_dir = "/app/hickoryStratsWatcher/"
-    commit(repo_dir, file_list)
+    #commit(repo_dir, file_list)
+    commitAll(repo_dir)
     push_remote(repo_dir)
 
 if __name__ == "__main__":

@@ -423,6 +423,9 @@ def generate_scanner_result(symbol, period, datasrc='yahoo_direct'):
     stoch_result = None
     macd_result = None
     
+    if(mean_turnover/1000000 < MIN_TURNOVER):
+        return result
+    
     if(len(signals.ix[signals.stoch_positions == 1.0].index) > 0):    
     
         then = signals.ix[signals.stoch_positions == 1.0].index[-1].date()
@@ -584,7 +587,7 @@ if __name__ == "__main__":
     weekno = datetime.today().weekday()
     tf = TimeFrame.DAILY
 
-    if weekno < 5:
+    if weekno > 0 and weekno <= 5:
         print("Run Daily Scanner on Weekday ......")
         tf = TimeFrame.DAILY
     else:

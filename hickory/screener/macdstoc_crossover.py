@@ -434,11 +434,11 @@ def generate_scanner_result(symbol, period, datasrc='yahoo_direct'):
         if (difference < MONITOR_PERIOD):
             print(symbol + " " + period + ": [" + str(then) + ", " +  str(difference) + " days ago at Stoch, avg vol: [" + str(mean_turnover) + "]")
             stoch_result =  "S" + str(difference)
-           
-    if(len(signals.ix[signals.macd_positions == 1.0].index) > 0 ):    
+    
+    lastmacd = signals.tail(1).signal_macd_x.iloc[0]
+    #print(signals.tail(20))  
+    if(len(signals.ix[signals.macd_positions == 1.0].index) > 0 and lastmacd == 1.0):    
         
-        print(signals.tail(1))
-         
         then = signals.ix[signals.macd_positions == 1.0].index[-1].date()
         now = datetime.now().date()
         difference =  (now - then) / timedelta(days=1)
@@ -615,9 +615,9 @@ if __name__ == "__main__":
  
     #generate_scanner_result("XAU=X", "DAILY")
     #generate_scanner_result("DEXJPUS", "DAILY", 'fred')
-    #generate_scanner_result("0152.HK", "DAILY")
+    #generate_scanner_result("0144.HK", "DAILY")
     #generate_scanner_result("AUD=X", "DAILY")
-    #generate_scanner_result("0012.HK", "DAILY")
+    #generate_scanner_result("1357.HK", "DAILY")
 
     
     

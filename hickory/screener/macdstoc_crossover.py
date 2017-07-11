@@ -31,6 +31,7 @@ from enum import Enum
 from hickory.core.hickory_base import Strategy
 from hickory.telegram import bot_sender
 from hickory.util import yahoo_session_loader, ftp_uploader, git_util, mem_util
+from hickory.crawler.hkex import securities_list
 from market_watch import quick_tracker
 
 EL = "\n"
@@ -594,12 +595,17 @@ if __name__ == "__main__":
         print("Run Weekly Scanner on Weekend ......")
         tf = TimeFrame.WEEKLY
 
+    # For retrieveing HKEX Full Stock List
+    with open('../data/list_HKEXList.json', 'w') as the_file:
+        the_file.write(securities_list.get_stock_json())
+
     jsonlist = [ 
-        '../data/list_IndustryList.json',
-        '../data/list_USIndustryList.json',
-        '../data/list_IndexList.json',
+        #'../data/list_IndustryList.json',
+        #'../data/list_USIndustryList.json',
+        #'../data/list_IndexList.json',
+        #'../data/list_ETFList.json',
+        '../data/list_HKEXList.json', 
         '../data/list_USIndexList.json',
-        '../data/list_ETFList.json',
         '../data/list_USETFList.json',
         '../data/list_FXList.json'
     ]

@@ -4,7 +4,7 @@ from bs4 import BeautifulSoup
 import requests
 import json
 
-from market_watch.db import market_db
+#from market_watch.db import 
 
 def get_stock_json():
 

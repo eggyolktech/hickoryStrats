@@ -33,6 +33,7 @@ from hickory.telegram import bot_sender
 from hickory.util import yahoo_session_loader, ftp_uploader, git_util, mem_util
 from hickory.crawler.hkex import securities_list
 from market_watch import quick_tracker
+from market_watch.db import stock_tracker_db
 
 EL = "\n"
 DEL = "\n\n"
@@ -440,6 +441,7 @@ def generate_scanner_result(symbol, period, datasrc='yahoo_direct'):
             stoch_result =  "S" + str(difference)
     
     lastmacd = signals.tail(1).signal_macd_x.iloc[0]
+    lastclose = signals.tail(1).close.iloc[0]
     #print(signals.tail(20))  
     if(len(signals.ix[signals.macd_positions == 1.0].index) > 0 and lastmacd == 1.0):    
         
@@ -448,15 +450,20 @@ def generate_scanner_result(symbol, period, datasrc='yahoo_direct'):
         difference =  (now - then) / timedelta(days=1)
         
         if (difference < MONITOR_PERIOD):
-            print(symbol + " " + period + ": [" + str(then) + ", " +  str(difference) + " days ago at MACD, avg turnover: [" + str(mean_turnover) + "]")
+            print(symbol + " " + period + ": [" + str(then) + ", " +  str(difference) + " days ago at MACD, avg turnover: [" + str(mean_turnover) + ", $" + str(lastclose) +  "]")
             macd_result = "M" + str(difference)
 
     if (stoch_result and macd_result and (mean_turnover == 0 or mean_turnover/1000000>=MIN_TURNOVER)):
         chart_path = "" #generate_scanner_chart(symbol, period, bars, signals)[0]
         turnover = "$" + str('%.2f' % (mean_turnover/1000000)) + "m"
-        result.append(command + symbol.replace(".HK", "") + " @" + period[:1] + " [" +  stoch_result.replace(".0", "") + ", " + macd_result.replace(".0","") + ", " + turnover + "]")
+        description = stoch_result.replace(".0", "") + ", " + macd_result.replace(".0","") + ", " + turnover
+        result.append(command + symbol.replace(".HK", "") + " @" + period[:1] + " [" + description + "]")
         result.append(chart_path)
-            
+
+        # add db tracker
+        if ("M1," in description or "S1," in description):
+            stock_tracker_db.add_tracker(datetime.today().strftime('%Y%m%d'), symbol.replace(".HK", ""), lastclose, period[:1], description)
+               
     #print("result: " + symbol + " - " + str(result))
     return result
 

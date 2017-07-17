@@ -459,10 +459,14 @@ def generate_scanner_result(symbol, period, datasrc='yahoo_direct'):
         description = stoch_result.replace(".0", "") + ", " + macd_result.replace(".0","") + ", " + turnover
         result.append(command + symbol.replace(".HK", "") + " @" + period[:1] + " [" + description + "]")
         result.append(chart_path)
+        
+        region = "US"
+        if (".HK" in symbol):
+            region = "HK"
 
         # add db tracker
         if ("M1," in description or "S1," in description):
-            stock_tracker_db.add_tracker(datetime.today().strftime('%Y%m%d'), symbol.replace(".HK", ""), lastclose, period[:1], description)
+            stock_tracker_db.add_tracker(datetime.today().strftime('%Y%m%d'), symbol.replace(".HK", ""), lastclose, period[:1], description, region)
                
     #print("result: " + symbol + " - " + str(result))
     return result

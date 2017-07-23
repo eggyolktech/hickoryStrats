@@ -13,7 +13,7 @@ def get_stock_quote(code):
 
     url = "http://www.aastocks.com/en/mobile/Quote.aspx?symbol=" + code
 
-    print("URL: [" + url + "]")
+    #print("URL: [" + url + "]")
     
     quote_result = {}
 
@@ -32,7 +32,7 @@ def get_stock_quote(code):
 
     div_last = soup.find("div", {"class": "text_last"})
 
-    quote_result["Close"] = (div_last.text.strip())
+    quote_result["Close"] = (div_last.text.strip().replace(",",""))
 
     td_last = soup.find("td", {"class": "cell_last"})
     quote_result["ChangeVal"] = (td_last.find_all("div")[2].find_all("span")[0].text)
@@ -99,9 +99,9 @@ def get_quote_message(code, simpleMode=True):
         passage = passage + direction + " " + locale.currency(float(quote_result["Close"])) + " (" + quote_result["ChangeVal"] + "/" + quote_result["ChangePercent"] + ")" + EL
         passage = passage + quote_result["Range"] + " (" + quote_result["Volume"] + "/" + quote_result["Turnover"] + ")"+ EL
         if (float(quote_result["Close"])) > float(quote_result["52WeekHigh"]):
-            passage = passage + u'\U0001F525' + " <i>52 Week High</i>" + EL
+            passage = passage + u'\U0001F525' + "<i>52 Week High</i>" + EL
         elif (float(quote_result["Close"])) < float(quote_result["52WeekLow"]):
-            passage = passage + u'\U0001F525' + " <i>52 Week Low</i>" + EL 
+            passage = passage + u'\U00002744' + "<i>52 Week Low</i>" + EL 
 
         if (simpleMode):
             return passage     
@@ -123,7 +123,7 @@ def get_quote_message(code, simpleMode=True):
 
 def main():
 
-    quote = get_stock_quote('3993')
+    quote = get_stock_quote('3054')
     
     for key, value in quote.items():
         print(key, ":", value)

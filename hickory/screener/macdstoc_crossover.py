@@ -18,19 +18,14 @@ import matplotlib.dates as mdates
 import traceback
 import logging
 
-from pandas_datareader import data as web, wb
+#from pandas_datareader import data as web, wb
 import json
-
-import urllib.request
-import urllib.parse
-import requests
-from urllib.parse import quote
-import io
 from enum import Enum
 
 from hickory.core.hickory_base import Strategy
 from hickory.telegram import bot_sender
 from hickory.util import yahoo_session_loader, ftp_uploader, git_util, mem_util
+from hickory.data import webdata
 from hickory.crawler.hkex import securities_list
 from market_watch import quick_tracker
 from market_watch.db import stock_tracker_db
@@ -262,52 +257,6 @@ def generate_scanner_chart(symbol, period, bars, signals):
     result = []
     result.append(chartpath)
     return result
-
-def retrieve_bars_data_from_yahoo(symbol, datasrc, start, end):
-
-    start_epoch = str(start.timestamp()).split(".")[0]
-    end_epoch = str(end.timestamp()).split(".")[0]
-    
-    symbol = symbol.replace(".US", "")
-
-    #print("Retrieving data for [" + symbol + "] from " + str(start_epoch) + " to " + str(end_epoch))
-
-    cookies = None
-    crumb = None
-    
-    session = yahoo_session_loader.load()
-    cookies = session.getCookies()
-    crumb = session.getCrumb()    
-    
-    if (cookies and crumb):
-    
-        url = 'https://query1.finance.yahoo.com/v7/finance/download/'  + symbol + '?period1=' + start_epoch + '&period2=' + end_epoch + '&interval=1d&events=history&crumb=' + crumb
-
-        response = requests.get(url, cookies=cookies)
-        #print("url: " + url);        
-        #print(response.content.decode("utf-8"))
-
-        df = pd.read_csv(io.StringIO(response.content.decode("utf-8")), header=0, sep=',', index_col=0)
-        
-        # Converting the index as date
-        df.index = pd.to_datetime(df.index)
-   
-        # Only required if df is not float64 type
-        if( len(df.index) > 0 and df.Open.dtype != "float64"):
-            df = df[df.Open != "null"]
-            df[['Open', 'High', 'Low', 'Close', 'Adj Close', 'Volume']] = df[['Open', 'High', 'Low', 'Close', 'Adj Close', 'Volume']].apply(pd.to_numeric)
-            
-            if(not "=" in symbol):
-                df = df[df.Volume > 0]
-                
-        elif (len(df.index) == 0):
-            #print("No historical data for code: [" + symbol + "]")
-            raise ValueError
-        
-        #print(df.Open.values)
-        #print(df.to_string())
-        #print(df.tail())
-        return df
     
 def retrieve_bars_data(symbol, datasrc, start, end):
 
@@ -325,12 +274,7 @@ def retrieve_bars_data(symbol, datasrc, start, end):
     
     if ( any(st == symbol for st in reciprocals) ): 
         
-        if (datasrc == "yahoo"):
-            bars = web.DataReader(symbol, datasrc, start, end)
-        elif (datasrc == "yahoo_direct"):
-            bars = retrieve_bars_data_from_yahoo(symbol, datasrc, start, end)
-        else :
-            bars = retrieve_bars_data_from_yahoo(symbol, datasrc, start, end)
+        bars = webdata.DataReader(symbol, datasrc, start, end)    
         
         bars['Open'] = np.reciprocal(bars['Open'])
         recHigh = np.reciprocal(bars['Low'])
@@ -340,18 +284,11 @@ def retrieve_bars_data(symbol, datasrc, start, end):
 
         bars['Close'] = np.reciprocal(bars['Close'])
         bars['Adj Close'] = np.reciprocal(bars['Adj Close'])
+    
     elif ( any(st == symbol for st in crosspairs) ):
-        #print("In Crosspairs....")
-        
-        if (datasrc == "yahoo"):
-            x1bars = web.DataReader(symbol[0:3] + '=X', datasrc, start, end)
-            x2bars = web.DataReader(symbol[3:6] + '=X', datasrc, start, end)
-        elif (datasrc == "yahoo_direct"):
-            x1bars = retrieve_bars_data_from_yahoo(symbol[0:3] + '=X', datasrc, start, end)
-            x2bars = retrieve_bars_data_from_yahoo(symbol[3:6] + '=X', datasrc, start, end)       
-        else:
-            x1bars = retrieve_bars_data_from_yahoo(symbol[0:3] + '=X', datasrc, start, end)
-            x2bars = retrieve_bars_data_from_yahoo(symbol[3:6] + '=X', datasrc, start, end) 
+       
+        x1bars = webdata.DataReader(symbol[0:3] + '=X', datasrc, start, end)
+        x2bars = webdata.DataReader(symbol[3:6] + '=X', datasrc, start, end)
         
         x1bars['Open'] = np.reciprocal(x1bars['Open'])
         recHigh = np.reciprocal(x1bars['Low'])
@@ -365,12 +302,7 @@ def retrieve_bars_data(symbol, datasrc, start, end):
         bars = x1bars * x2bars
     
     else:
-        if (datasrc == "yahoo"):
-            bars = web.DataReader(symbol, datasrc, start, end)
-        elif (datasrc == "yahoo_direct"):
-            bars = retrieve_bars_data_from_yahoo(symbol, datasrc, start, end)
-        else:
-            bars = retrieve_bars_data_from_yahoo(symbol, datasrc, start, end)
+        bars = webdata.DataReader(symbol, datasrc, start, end)
         
     #print("BARS HIGH After")    
     #print(bars.head())   
@@ -442,6 +374,8 @@ def generate_scanner_result(symbol, period, datasrc='yahoo_direct'):
     
     lastmacd = signals.tail(1).signal_macd_x.iloc[0]
     lastclose = signals.tail(1).close.iloc[0]
+    lastdiv = signals.tail(1).divergence.iloc[0]
+    
     #print(signals.tail(20))  
     if(len(signals.ix[signals.macd_positions == 1.0].index) > 0 and lastmacd == 1.0):    
         
@@ -456,8 +390,12 @@ def generate_scanner_result(symbol, period, datasrc='yahoo_direct'):
     if (stoch_result and macd_result and (mean_turnover == 0 or mean_turnover/1000000>=MIN_TURNOVER)):
         chart_path = "" #generate_scanner_chart(symbol, period, bars, signals)[0]
         turnover = "$" + str('%.2f' % (mean_turnover/1000000)) + "m"
-        description = stoch_result.replace(".0", "") + ", " + macd_result.replace(".0","") + ", " + turnover
-        result.append(command + symbol.replace(".HK", "") + " @" + period[:1] + " [" + description + "]")
+        description = stoch_result.replace(".0", "") + ", " + macd_result.replace(".0","") + ", " + turnover + ", " + str('%.4f' % lastdiv)
+        if ("M1," in description or "S1, " in description):
+            info_str = "" + symbol.replace(".HK", "") + " @<b>" + period[:1] + " [" + description + "]" + "</b>"
+        else:
+            info_str = symbol.replace(".HK", "") + " @" + period[:1] + " [" + description + "]" 
+        result.append(command + info_str)
         result.append(chart_path)
         
         region = "US"
@@ -614,7 +552,7 @@ if __name__ == "__main__":
         #'../data/list_IndustryList.json',
         #'../data/list_USIndustryList.json',
         #'../data/list_IndexList.json',
-        #'../data/list_ETFList.json',
+        '../data/list_ETFList.json',
         '../data/list_HKEXList.json', 
         '../data/list_USIndexList.json',
         '../data/list_USETFList.json',

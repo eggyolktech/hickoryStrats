@@ -129,8 +129,8 @@ def sync_nonequ_list(cat):
             table_dtl = soup_dtl.findAll("table")[5]
             #print(table_dtl)   
             _indLv1 = _cat
-            _indLv2 = _trust
-            _indLv3 = "N/A"
+            _indLv2 = _cat
+            _indLv3 = _trust
              
             for td in table_dtl.findAll("td"):
                 

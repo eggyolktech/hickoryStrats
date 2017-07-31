@@ -3,11 +3,208 @@
 from bs4 import BeautifulSoup
 import requests
 import locale
+import re
 
 #from market_watch.db import market_db
 
 EL = "\n"
 DEL = "\n\n"
+TAG_RE = re.compile(r'<[^>]+>')
+
+def remove_tags(text):
+    return TAG_RE.sub('', text)
+
+def get_cn_stock_quote(code):
+
+    url = "http://www.aastocks.com/en/cnhk/quote/detail-quote.aspx?shsymbol=" + code
+
+    print("URL: [" + url + "]")
+    
+    quote_result = {}
+
+    headers = {'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/39.0.2171.95 Safari/537.36'}
+
+    r = requests.get(url, headers=headers)
+    html = r.text 
+    #print(html)
+    soup = BeautifulSoup(html, "html.parser")
+    
+    table = soup.find("table", {"id": "tbQuote"})
+
+    if (not table):
+        return quote_result
+
+    name = soup.find("span", {"id": "cp_ucStockBar_litInd_StockName"}).text
+    cell = table.findAll("tr")[0].findAll("td")[0]
+    p_close = cell.findAll("span", {"class": "ss2"})[0].text.replace(",","")
+    l_range = cell.findAll("span", {"class": "ss2"})[1].text
+    l_open = cell.findAll("span", {"class": "ss2"})[2].text
+    l_close = cell.find("div", {"class": "font33"}).text.strip()    
+
+    cell = table.findAll("tr")[0].findAll("td")[1]
+    change_val = cell.findAll("div", {"class": "ss3"})[0].text
+
+    cell = table.findAll("tr")[0].findAll("td")[2]
+    volume = cell.findAll("div", {"class": "ss3"})[0].text.strip()
+
+    cell = table.findAll("tr", recursive=False)[1].findAll("td")[0]
+    change_pct = cell.findAll("div", {"class": "ss3"})[0].text
+    #print(table.findAll("tr", recursive=False)[1])
+    cell = table.findAll("tr", recursive=False)[1].findAll("td")[1]
+    turnover = cell.findAll("div", {"class": "ss3"})[0].text.strip()
+
+    row = table.findAll("tr", recursive=False)[3]
+    pe_ratio = row.findAll("td")[0].findAll("div", {"class": "ss2"})[0].text.split("/")[1].strip()
+    eps = row.findAll("td")[1].findAll("div", {"class": "ss2"})[0].text.strip()
+    
+    row = table.findAll("tr", recursive=False)[4]
+    yiel = row.findAll("td")[0].findAll("div", {"class": "ss2"})[0].text.split("/")[1].strip()
+    dividend = row.findAll("td")[1].findAll("div", {"class": "ss2"})[0].text.strip()
+
+    row = table.findAll("tr", recursive=False)[5]
+    nav = row.findAll("td")[0].findAll("div", {"class": "ss2"})[0].text.split("/")[1].strip()
+
+    row = table.findAll("tr", recursive=False)[8]
+    lots = row.findAll("td")[0].findAll("div", {"class": "ss2"})[0].text.strip()
+
+    row = table.findAll("tr", recursive=False)[7]
+    mkt_cap = row.findAll("td")[0].findAll("div", {"class": "ss2"})[0].text.split("/")[1].strip()
+    exchange = row.findAll("td")[1].findAll("div", {"class": "ss2"})[0].text.strip()
+
+    table = soup.find("table", {"id": "tbHist"})
+    wk_range = table.findAll("tr")[4].findAll("td")[1].text.strip()
+    #print(wk_range)
+    divgrid = soup.find("div", {"class": "grid_11"})
+    last_update = divgrid.findAll("div", {"class": "content"}, recursive=False)[1].find("span", {"class": "cls"}).text
+    
+    quote_result["CodeName"] = name
+    quote_result["Close"] = l_close
+    quote_result["ChangeVal"] = change_val
+    quote_result["ChangePercent"] = change_pct
+
+    if ("+" in quote_result["ChangeVal"]):
+        quote_result["Direction"] = "UP"
+    elif ("-" in quote_result["ChangeVal"]):
+        quote_result["Direction"] = "DOWN"
+    else:
+        quote_result["Direction"] = "NONE"
+
+    quote_result["Range"] = l_range
+
+    quote_result["Open"] = l_open
+    quote_result["PrevClose"] = p_close
+    quote_result["Volume"] = volume
+    quote_result["LastUpdate"] = last_update
+
+    quote_result["LotSize"] = lots
+    quote_result["Turnover"] = turnover
+    quote_result["PE"] = pe_ratio
+    quote_result["Yield"] = yiel
+    quote_result["DivRatio"] = dividend
+    quote_result["EPS"] = eps
+    quote_result["MktCap"] = mkt_cap
+    quote_result["NAV"] = nav
+    quote_result["Exchange"] = exchange
+
+    quote_result["52WeekLow"] = wk_range.split("-")[0].strip()
+    quote_result["52WeekHigh"] = wk_range.split("-")[1].strip()
+   
+    return quote_result
+
+def get_us_stock_quote(code):
+
+    url = "http://www.aastocks.com/en/usq/quote/quote.aspx?symbol=" + code
+
+    print("URL: [" + url + "]")
+    quote_result = {}
+
+    headers = {'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/39.0.2171.95 Safari/537.36'}
+
+    r = requests.get(url, headers=headers)
+    html = r.text 
+    #print(html)
+    soup = BeautifulSoup(html, "html.parser")
+    
+    table = soup.find("div", {"class": "grid_11"}).find("table", {"class":"tblM"})
+
+    if (not table):
+        return quote_result
+
+    name = soup.find("div", {"id": "divSymbol"}).find("span", {"id": "cp_ucUSCurBar_litSymbol"}).text
+    cell = table.findAll("tr")[0].findAll("td")[0]
+    p_close = cell.findAll("div", {"class": "float_r"})[0].text.split("：")[1].replace(",","")
+    div_range = cell.findAll("div", {"style": "height:10px;"})[0]
+    l_range = div_range.findAll("b")[0].text.replace(",","") + " - " + div_range.findAll("b")[1].text.replace(",","")
+    l_open = cell.findAll("div", {"id": "cp_pQuoteBar"})[0].findAll("b", {"style": "color:Black"})[0].text.replace(",","")
+    l_close = cell.find("div", {"class": "font26"}).text.strip().replace(",","")    
+
+    last_update = cell.find("div", {"class": "rmk2"}).text.strip().replace("(Last Update:", "").replace(")","").strip()
+
+    cell = table.findAll("tr")[0].findAll("td")[1]
+    change_val = cell.findAll("div", {"class": "font18"})[0].text
+
+    cell = table.findAll("tr")[0].findAll("td")[2]
+    volume = cell.findAll("div", {"class": "font18"})[0].text.strip()
+
+    turnover = "%.2f" % (float(volume[:-1]) * float(l_close)) + volume[-1]
+
+    cell = table.findAll("tr", recursive=False)[1].findAll("td")[0]
+    change_pct = cell.findAll("div", {"class": "font18"})[0].text
+
+    cell = table.findAll("tr", recursive=False)[1].findAll("td")[1]
+    pe_ratio = cell.findAll("div", {"class": "font18"})[0].text.strip()
+
+    row = table.findAll("tr", recursive=False)[2]
+    wk_low = row.findAll("td")[0].findAll("div", {"class": "float_r"})[0].text.strip().replace(",","")
+    wk_high = row.findAll("td")[1].findAll("div", {"class": "float_r"})[0].text.strip().replace(",","")
+    
+    row = table.findAll("tr", recursive=False)[3]
+    eps = row.findAll("td")[0].findAll("div", {"class": "float_r"})[0].text.strip()
+    exchange = row.findAll("td")[1].findAll("div", {"class": "float_r"})[0].text.strip()
+
+    row = table.findAll("tr", recursive=False)[4]
+    
+    _yield = None
+    if ("Yield" in row.findAll("td")[0].text):
+        _yield = row.findAll("td")[0].findAll("div", {"class": "float_r"})[0].text.strip()
+    
+    dividend = None
+    if ("Div" in row.findAll("td")[1].text):
+        dividend = row.findAll("td")[1].findAll("div", {"class": "float_r"})[0].text.strip()
+   
+    quote_result["CodeName"] = name
+    quote_result["Close"] = l_close
+    quote_result["ChangeVal"] = change_val
+    quote_result["ChangePercent"] = change_pct
+
+    if ("+" in quote_result["ChangeVal"]):
+        quote_result["Direction"] = "UP"
+    elif ("-" in quote_result["ChangeVal"]):
+        quote_result["Direction"] = "DOWN"
+    else:
+        quote_result["Direction"] = "NONE"
+
+    quote_result["Range"] = l_range
+
+    quote_result["Open"] = l_open
+    quote_result["PrevClose"] = p_close
+    quote_result["Volume"] = volume
+    quote_result["LastUpdate"] = last_update
+
+    quote_result["Turnover"] = turnover
+    quote_result["PE"] = pe_ratio
+    
+    if (_yield):
+        quote_result["Yield"] = _yield 
+    if (dividend):
+        quote_result["DivRatio"] = dividend
+    quote_result["EPS"] = eps
+
+    quote_result["52WeekLow"] = wk_low.strip()
+    quote_result["52WeekHigh"] = wk_high.strip()
+   
+    return quote_result
+
 
 def get_stock_quote(code):
 
@@ -77,13 +274,19 @@ def get_stock_quote(code):
     
     return quote_result
 
-def get_quote_message(code, simpleMode=True):
+def get_quote_message(code, region="HK", simpleMode=True):
 
     locale.setlocale( locale.LC_ALL, '' )
     passage = ""
     
-    quote_result = get_stock_quote(code)
-    print(quote_result)
+    if (region == "HK"):
+        quote_result = get_stock_quote(code)
+    elif (region == "CN"):
+        quote_result = get_cn_stock_quote(code)
+    elif (region == "US"):
+        quote_result = get_us_stock_quote(code)
+    
+    #print(quote_result)
     if (not quote_result):
         passage = "Result not found for " + code
     else:    
@@ -106,28 +309,37 @@ def get_quote_message(code, simpleMode=True):
         if (simpleMode):
             return passage     
 
-        passage = passage + EL + "Open: " + quote_result["Open"] + EL
-        passage = passage + "PrevClose: " + quote_result["PrevClose"] + EL
-        passage = passage + "Lot Size: " + quote_result["LotSize"] + EL
-        passage = passage + "PE: " + quote_result["PE"] + EL
-        passage = passage + "Yield: " + quote_result["Yield"] + EL
-        passage = passage + "DivRatio: " + quote_result["DivRatio"] + EL
-        passage = passage + "EPS: " + quote_result["EPS"] + EL
-        passage = passage + "MktCap: " + quote_result["MktCap"] + EL
-        passage = passage + "NAV: " + quote_result["NAV"] + EL
-        passage = passage + "52 Week High: " + quote_result["52WeekHigh"] + EL
-        passage = passage + "52 Week Low: " + quote_result["52WeekLow"] + EL
-        passage = passage + "<i>LastUpdate: " + quote_result["LastUpdate"] + "</i>" + EL
+        passage = passage + EL 
+
+        attrs = ["Open", "PrevClose", "LotSize", "PE", "Yield", "DivRatio", "EPS", "MktCap", "NAV", "52WeekHigh", "52WeekLow", "Exchange", "LastUpdate"]
+
+        for attr in attrs:
+            passage = passage + constructPassageAttributes(attr, quote_result)
 
     return passage
 
+def constructPassageAttributes(key, qDict):
+
+    if (key in qDict):
+        return key + ": " + qDict[key] + EL
+    else:
+        return ""
+
 def main():
 
-    quote = get_stock_quote('3054')
-    
-    for key, value in quote.items():
-        print(key, ":", value)
+    #quote = get_stock_quote('3054')
+    #quote = get_cn_stock_quote('000001')
+    #quote = get_stock_quote('3054')
+    #for key, value in quote.items():
+    #    print(key, ":", value)
+
+    #print(get_quote_message('2628', "HK", False))
+    print(get_quote_message('000001',"CN", False))
  
+    print(get_quote_message('JPM',"US", False))
+    print(get_quote_message('MSFT',"US", False))
+    print(get_quote_message('AMZN',"US", False))
+
 if __name__ == "__main__":
     main()                
               

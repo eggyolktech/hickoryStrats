@@ -4,7 +4,8 @@ from bs4 import BeautifulSoup
 import requests
 import locale
 import re
-
+from hickory.db import stock_tech_db
+from hickory.util import stock_util
 #from market_watch.db import market_db
 
 EL = "\n"
@@ -135,7 +136,10 @@ def get_us_stock_quote(code):
     p_close = cell.findAll("div", {"class": "float_r"})[0].text.split("：")[1].replace(",","")
     div_range = cell.findAll("div", {"style": "height:10px;"})[0]
     l_range = div_range.findAll("b")[0].text.replace(",","") + " - " + div_range.findAll("b")[1].text.replace(",","")
-    l_open = cell.findAll("div", {"id": "cp_pQuoteBar"})[0].findAll("b", {"style": "color:Black"})[0].text.replace(",","")
+    if (cell.findAll("div", {"id": "cp_pQuoteBar"})):
+        l_open = cell.findAll("div", {"id": "cp_pQuoteBar"})[0].findAll("b", {"style": "color:Black"})[0].text.replace(",","")
+    else:
+        l_open = "N/A"
     l_close = cell.find("div", {"class": "font26"}).text.strip().replace(",","")    
 
     last_update = cell.find("div", {"class": "rmk2"}).text.strip().replace("(Last Update:", "").replace(")","").strip()
@@ -145,8 +149,10 @@ def get_us_stock_quote(code):
 
     cell = table.findAll("tr")[0].findAll("td")[2]
     volume = cell.findAll("div", {"class": "font18"})[0].text.strip()
-
-    turnover = "%.2f" % (float(volume[:-1]) * float(l_close)) + volume[-1]
+    if ("N/A" in volume):
+        turnover = "N/A"
+    else: 
+        turnover = "%.2f" % (float(volume[:-1]) * float(l_close)) + volume[-1]
 
     cell = table.findAll("tr", recursive=False)[1].findAll("td")[0]
     change_pct = cell.findAll("div", {"class": "font18"})[0].text
@@ -248,6 +254,20 @@ def get_stock_quote(code):
     quote_result["Open"] = (td_last.find_all("td")[2].find("span").text)
     quote_result["PrevClose"] = (td_last.find_all("td")[3].find("span").text)
     quote_result["Volume"] = (td_last.find_all("td")[4].find("span").text)
+
+    f_vol_now = f_vol_avg_3mth = None
+
+    if (stock_util.rf(quote_result["Volume"])):
+        f_vol_now = float(stock_util.rf(quote_result["Volume"]))
+    
+    stk = stock_tech_db.get_stock_tech(code)
+    print(stk)
+    if (stk and stk["_3MONTH_AVG_VOL"]):
+        f_vol_avg_3mth = float(stk["_3MONTH_AVG_VOL"])
+
+    if (f_vol_now and f_vol_avg_3mth):
+        quote_result["V2V"] = "%.2f" % (f_vol_now / f_vol_avg_3mth)
+
     #quote_result[""] = (soup.find("div", {"class": "ctl00_cphContent_pQuoteDetail"}))
     div_content = soup.find("div", {"id": "ctl00_cphContent_pQuoteDetail"})
     quote_result["LastUpdate"] = (div_content.find("font", {"class": "font12_white"}).text)
@@ -301,11 +321,19 @@ def get_quote_message(code, region="HK", simpleMode=True):
         passage = "<b>" + quote_result["CodeName"] + "</b>" + EL
         passage = passage + direction + " " + locale.currency(float(quote_result["Close"])) + " (" + quote_result["ChangeVal"] + "/" + quote_result["ChangePercent"] + ")" + EL
         passage = passage + quote_result["Range"] + " (" + quote_result["Volume"] + "/" + quote_result["Turnover"] + ")"+ EL
-        if (float(quote_result["Close"])) > float(quote_result["52WeekHigh"]):
-            passage = passage + u'\U0001F525' + "<i>52 Week High</i>" + EL
-        elif (float(quote_result["Close"])) < float(quote_result["52WeekLow"]):
-            passage = passage + u'\U00002744' + "<i>52 Week Low</i>" + EL 
 
+        icon_v2v = ""
+        if ("V2V" in quote_result):
+            if (float(quote_result["V2V"]) > 1.5):
+                 icon_v2v = u'\U0001F414'
+            passage = passage + icon_v2v +  "V/AV " + "x" + quote_result["V2V"] + EL
+       
+        if (not quote_result["52WeekHigh"] == "N/A" and not quote_result["52WeekLow"] == "N/A"):
+            if (float(quote_result["Close"])) > float(quote_result["52WeekHigh"]):
+                passage = passage + u'\U0001F525' + "<i>52 Week High</i>" + EL
+            elif (float(quote_result["Close"])) < float(quote_result["52WeekLow"]):
+                passage = passage + u'\U00002744' + "<i>52 Week Low</i>" + EL 
+        
         if (simpleMode):
             return passage     
 

@@ -3,6 +3,7 @@
 from bs4 import BeautifulSoup
 import requests
 import locale
+from hickory.util import stock_util
 
 #from market_watch.db import market_db
 
@@ -10,19 +11,8 @@ EL = "\n"
 DEL = "\n\n"
 
 def rf(text):
+    return stock_util.rf(text)
     
-    if (text == "-"):
-        return None
-    else:
-        text = text.replace(",","")
-        if ("B" in text):
-            return float(text.replace("B","")) * 1000000000
-        elif ("M" in text):
-            return float(text.replace("M","")) * 1000000
-        elif ("K" in text):
-            return float(text.replace("K","")) * 1000       
-        return text
-
 def get_technical(code):
 
     info = {}

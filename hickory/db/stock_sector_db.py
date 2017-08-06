@@ -16,6 +16,14 @@ def init():
     print("Opened database successfully")
     
     conn.close()
+    
+def get_hot_stocks_where_sql(period):
+
+    where_sql = " from stocks_tech, stocks where stocks.code = stocks_tech.code and "
+            + F_TURNOVER + " > ? and stocks.MKT_CAP > ? order by "
+            + F_RELATIVE_MAP[period] + " desc limit " + LIMIT_HOT
+            
+    return where_sql
 
 def get_hot_stocks_code(period):
 
@@ -27,28 +35,20 @@ def get_hot_stocks_code(period):
 
         t = (LIMIT_TURNOVER, LIMIT_MKT_CAP)
         sql = ("select stocks.code"
-            + " from stocks_tech, stocks where stocks.code = stocks_tech.code and "
-            + F_TURNOVER + " > ? and stocks.MKT_CAP > ? order by "
-            + F_RELATIVE_MAP[period] + " desc limit " + LIMIT_HOT + ";")
+            + get_hot_stocks_where_sql(period) + ";")
 
     elif (period == "ALL"):
         t = (LIMIT_TURNOVER, LIMIT_MKT_CAP, LIMIT_TURNOVER, LIMIT_MKT_CAP, LIMIT_TURNOVER, LIMIT_MKT_CAP)
 
         sql = ("select code from ("
             + "select * from (Select stocks.code"
-            + " from stocks_tech, stocks where stocks.code = stocks_tech.code and "
-            + F_TURNOVER + " > ? and stocks.MKT_CAP > ? order by "
-            + F_RELATIVE_MAP['1m'] + " desc limit " + LIMIT_HOT + ") "
+            + get_hot_stocks_where_sql("1m") + ") "
             + " UNION "
             + "select * from (Select stocks.code"
-            + " from stocks_tech, stocks where stocks.code = stocks_tech.code and "
-            + F_TURNOVER + " > ? and stocks.MKT_CAP > ? order by "
-            + F_RELATIVE_MAP["3m"] + " desc limit " + LIMIT_HOT + ") "
+            + get_hot_stocks_where_sql("3m") + ") "
             + "UNION "
             + "select * from (Select stocks.code"
-            + " from stocks_tech, stocks where stocks.code = stocks_tech.code and "
-            + F_TURNOVER + " > ? and stocks.MKT_CAP > ? order by "
-            + F_RELATIVE_MAP["1y"] + " desc limit " + LIMIT_HOT + ") "
+            + get_hot_stocks_where_sql("1y") + ") "
             + " );")
     
     c = conn.cursor()
@@ -70,9 +70,7 @@ def get_hot_stocks_by_industry(industry, period):
 
         t = (LIMIT_TURNOVER, LIMIT_MKT_CAP, industry)
         sql = ("select * from (select stocks.code, stocks.industry_lv2, stocks.name, last_close, last_change_pct, last_vol_ratio, "
-            + F_RELATIVE_MAP[period] + " from stocks_tech, stocks where stocks.code = stocks_tech.code and "
-            + F_TURNOVER + " > ? and stocks.MKT_CAP > ? order by "
-            + F_RELATIVE_MAP[period] + " desc limit " + LIMIT_HOT + " ) where INDUSTRY_LV2 = ?;")
+            + F_RELATIVE_MAP[period] + get_hot_stocks_where_sql(period) + " ) where INDUSTRY_LV2 = ?;")
 
     elif (period == "ALL"):
         t = (LIMIT_TURNOVER, LIMIT_MKT_CAP, LIMIT_TURNOVER, LIMIT_MKT_CAP, LIMIT_TURNOVER, LIMIT_MKT_CAP, industry)
@@ -80,21 +78,15 @@ def get_hot_stocks_by_industry(industry, period):
         sql = ("select * from ("
             + "select * from (Select stocks.code, stocks.industry_lv2, stocks.name,last_close, last_change_pct, last_vol_ratio,"
             + F_RELATIVE_MAP['1m'] + "," + F_RELATIVE_MAP['3m'] + "," + F_RELATIVE_MAP['1y']
-            + " from stocks_tech, stocks where stocks.code = stocks_tech.code and "
-            + F_TURNOVER + " > ? and stocks.MKT_CAP > ? order by "
-            + F_RELATIVE_MAP['1m'] + " desc limit " + LIMIT_HOT + ") "
+            + get_hot_stocks_where_sql("1m") + ") "
             + " UNION "
             + "select * from (Select stocks.code, stocks.industry_lv2, stocks.name, last_close, last_change_pct, last_vol_ratio,"
             + F_RELATIVE_MAP["1m"] + "," + F_RELATIVE_MAP["3m"] + "," + F_RELATIVE_MAP["1y"]
-            + " from stocks_tech, stocks where stocks.code = stocks_tech.code and "
-            + F_TURNOVER + " > ? and stocks.MKT_CAP > ? order by "
-            + F_RELATIVE_MAP["3m"] + " desc limit " + LIMIT_HOT + ") "
+            + get_hot_stocks_where_sql("3m") + ") "
             + "UNION "
             + "select * from (Select stocks.code, stocks.industry_lv2, stocks.name, last_close, last_change_pct, last_vol_ratio,"
             + F_RELATIVE_MAP["1m"] + "," + F_RELATIVE_MAP["3m"] + "," + F_RELATIVE_MAP["1y"]
-            + " from stocks_tech, stocks where stocks.code = stocks_tech.code and "
-            + F_TURNOVER + " > ? and stocks.MKT_CAP > ? order by "
-            + F_RELATIVE_MAP["1y"] + " desc limit " + LIMIT_HOT + ") "
+            + get_hot_stocks_where_sql("1y") + ") "
             + " ) where industry_lv2 = ?;")
 
     c = conn.cursor()
@@ -117,9 +109,7 @@ def get_hot_industries(period):
 
         t = (LIMIT_TURNOVER, LIMIT_MKT_CAP)
         sql = ("select industry_lv2, count(1) as count from (select stocks.code, stocks.industry_lv2, stocks.name, " 
-            + F_RELATIVE_MAP[period] + " from stocks_tech, stocks where stocks.code = stocks_tech.code and " 
-            + F_TURNOVER + " > ? and stocks.MKT_CAP > ? order by " 
-            + F_RELATIVE_MAP[period] + " desc limit " + LIMIT_HOT + " ) group by industry_lv2 order by count desc;")
+            + F_RELATIVE_MAP[period] + get_hot_stocks_where_sql(period) + " ) group by industry_lv2 order by count desc;")
     
         rows = conn.execute(sql, t)
         for row in rows:
@@ -132,21 +122,15 @@ def get_hot_industries(period):
         sql = ("select industry_lv2, count(1) as count from ("
             + "select * from (Select stocks.code, stocks.industry_lv2, stocks.name, "
             + F_RELATIVE_MAP['1m'] + "," + F_RELATIVE_MAP['3m'] + "," + F_RELATIVE_MAP['1y']
-            + " from stocks_tech, stocks where stocks.code = stocks_tech.code and "
-            + F_TURNOVER + " > ? and stocks.MKT_CAP > ? order by "
-            + F_RELATIVE_MAP['1m'] + " desc limit " + LIMIT_HOT + ") "
+            + get_hot_stocks_where_sql("1m") + ") "
             + " UNION "
             + "select * from (Select stocks.code, stocks.industry_lv2, stocks.name, "
             + F_RELATIVE_MAP["1m"] + "," + F_RELATIVE_MAP["3m"] + "," + F_RELATIVE_MAP["1y"]
-            + " from stocks_tech, stocks where stocks.code = stocks_tech.code and "
-            + F_TURNOVER + " > ? and stocks.MKT_CAP > ? order by "
-            + F_RELATIVE_MAP["3m"] + " desc limit " + LIMIT_HOT + ") "           
+            + get_hot_stocks_where_sql("3m") + ") "           
             + "UNION "
             + "select * from (Select stocks.code, stocks.industry_lv2, stocks.name, "
             + F_RELATIVE_MAP["1m"] + "," + F_RELATIVE_MAP["3m"] + "," + F_RELATIVE_MAP["1y"]
-            + " from stocks_tech, stocks where stocks.code = stocks_tech.code and "
-            + F_TURNOVER + " > ? and stocks.MKT_CAP > ? order by "
-            + F_RELATIVE_MAP["1y"] + " desc limit " + LIMIT_HOT + ") "  
+            + get_hot_stocks_where_sql("1y") + ") "  
             + " ) group by industry_lv2 order by count desc;")
         #print(sql)
         rows = conn.execute(sql, t)

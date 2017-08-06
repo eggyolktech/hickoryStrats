@@ -32,6 +32,7 @@ from market_watch.db import stock_tracker_db
 
 EL = "\n"
 DEL = "\n\n"
+STOC_HIGHER_LIMIT = 75
 STOC_LOWER_LIMIT = 25 
 MONITOR_PERIOD = 20
 MIN_TURNOVER = 10
@@ -67,6 +68,8 @@ class MacdStocCrossScanner(Strategy):
         signals['signal_stoch_x'] = 0.0
         signals['signal_macd_x'] = 0.0
         #signals['signal_stoch_short'] = 0.0
+        signals['signal_stoch_high_x'] = 0.0
+        signals['signal_macd_high_x'] = 0.0
         
         pd.options.mode.chained_assignment = None  # default='warn'
         
@@ -99,7 +102,7 @@ class MacdStocCrossScanner(Strategy):
         #signals['signal'][self.short_window:] = np.where(signals['short_mavg'][self.short_window:] 
         #    > signals['long_mavg'][self.short_window:], 1.0, 0.0)   
             
-        # Create a 'signal' for Slow Stoc cross over <=20 && >=80
+        # Create a 'signal' for Slow Stoc cross over <=25
         if (len(signals) >= self.stoch_window):
             signals['signal_stoch_x'][self.stoch_window:] = np.where(
                 (signals['k_slow'][self.stoch_window:] > signals['d_slow'][self.stoch_window:])
@@ -115,16 +118,38 @@ class MacdStocCrossScanner(Strategy):
         else:
             signals['signal_macd_x'] = 0.0
         
-        #        result = pd.DataFrame({'MACD': macd, 'emaSmooth': emasmooth, 'divergence': macd-emasmooth})
-
-
         # Take the difference of the signals in order to generate actual trading orders
         signals['stoch_positions'] = signals['signal_stoch_x'].diff()
         signals.loc[signals.stoch_positions == -1.0, 'stoch_positions'] = 0.0
 
         signals['macd_positions'] = signals['signal_macd_x'].diff()
         signals.loc[signals.macd_positions == -1.0, 'macd_positions'] = 0.0
-        
+       
+        # Track High End XOver for FX
+        if ("=" in self.symbol):
+
+            if (len(signals) >= self.stoch_window):
+                signals['signal_stoch_high_x'][self.stoch_window:] = np.where(
+                    (signals['k_slow'][self.stoch_window:] < signals['d_slow'][self.stoch_window:])
+                    & (signals['k_slow'][self.stoch_window:] >= STOC_HIGHER_LIMIT)
+                    , 1.0, 0.0)
+            else:
+                signals['signal_stoch_high_x'] = 0.0
+
+            if (len(signals) >= self.macd_window):
+                signals['signal_macd_high_x'][self.macd_window:] = np.where(
+                    (signals['MACD'][self.macd_window:] < signals['emaSmooth'][self.macd_window:])
+                    , 1.0, 0.0)
+            else:
+                signals['signal_macd_high_x'] = 0.0
+
+            # Take the difference of the signals in order to generate actual trading orders
+            signals['stoch_positions_high_x'] = signals['signal_stoch_high_x'].diff()
+            signals.loc[signals.stoch_positions_high_x == -1.0, 'stoch_positions_high_x'] = 0.0
+
+            signals['macd_positions_high_x'] = signals['signal_macd_high_x'].diff()
+            signals.loc[signals.macd_positions_high_x == -1.0, 'macd_positions_high_x'] = 0.0
+
         #print(signals[['close', 'MACD', 'emaSmooth', 'divergence', 'signal_macd_x', 'macd_positions', 'turnover']].to_string())
         #print(signals[['close', 'k_slow', 'd_slow', 'signal_stoch_x', 'MACD', 'divergence', 'signal_macd_x', 'stoch_positions']].to_string())
         #print(signals[['close', 'k_slow', 'd_slow', 'low_min', 'high_max', 'k_fast', 'd_fast']].to_string())
@@ -356,8 +381,11 @@ def generate_scanner_result(symbol, period, datasrc='yahoo_direct'):
     mean_turnover = signals['turnover'].mean()
     stoch_result = None
     macd_result = None
+    stoch_high_x_result = None
+    macd_high_x_result = None
     
-    if(mean_turnover/1000000 < MIN_TURNOVER):
+    if(not mean_turnover == 0 and mean_turnover/1000000 < MIN_TURNOVER):
+        #print("Good luck next time...!")
         return result
     
     if(len(signals.ix[signals.stoch_positions == 1.0].index) > 0):    
@@ -405,6 +433,49 @@ def generate_scanner_result(symbol, period, datasrc='yahoo_direct'):
         # add db tracker
         if ("M1," in description or "S1," in description):
             stock_tracker_db.add_tracker(datetime.today().strftime('%Y%m%d'), symbol.replace(".HK", ""), lastclose, period[:1], description, region)
+
+    ######################### ONLY FOR FX (X From High Stoc Case) ##########################
+    if ("=" in symbol):
+
+        if(len(signals.ix[signals.stoch_positions_high_x == 1.0].index) > 0):    
+    
+            then = signals.ix[signals.stoch_positions_high_x == 1.0].index[-1].date()
+            now = datetime.now().date()
+            difference =  (now - then) / timedelta(days=1)
+        
+            #print(symbol + " - Difference:  " + str(difference))
+        
+            if (difference < MONITOR_PERIOD):
+                print(symbol + " " + period + ": [" + str(then) + ", " +  str(difference) + " days ago at Stoch HIGH, avg vol: [" + str(mean_turnover) + "]")
+                stoch_high_x_result =  "S" + str(difference)
+    
+        lastmacd = signals.tail(1).signal_macd_high_x.iloc[0]
+        lastclose = signals.tail(1).close.iloc[0]
+        lastdiv = signals.tail(1).divergence.iloc[0]
+    
+        #print(signals.tail(20))  
+        if(len(signals.ix[signals.macd_positions_high_x == 1.0].index) > 0 and lastmacd == 1.0):    
+        
+            then = signals.ix[signals.macd_positions_high_x == 1.0].index[-1].date()
+            now = datetime.now().date()
+            difference =  (now - then) / timedelta(days=1)
+        
+            if (difference < MONITOR_PERIOD):
+                print(symbol + " " + period + ": [" + str(then) + ", " +  str(difference) + " days ago at MACD HIGH, avg turnover: [" + str(mean_turnover) + ", $" + str(lastclose) +  "]")
+                macd_high_x_result = "M" + str(difference)
+
+            if (stoch_high_x_result and macd_high_x_result):
+                chart_path = "" #generate_scanner_chart(symbol, period, bars, signals)[0]
+                turnover = "$" + str('%.2f' % (mean_turnover/1000000)) + "m"
+                description = stoch_high_x_result.replace(".0", "") + ", " + macd_high_x_result.replace(".0","") + ", " + turnover + ", " + str('%.4f' % lastdiv)
+            if ("M1," in description or "S1, " in description):
+                info_str = "" + symbol + " Hx@<b>" + period[:1] + " [" + description + "]" + "</b>"
+            else:
+                info_str = symbol + " Hx@" + period[:1] + " [" + description + "]" 
+            
+            result = [] 
+            result.append(command + info_str)
+            result.append(chart_path)
                
     #print("result: " + symbol + " - " + str(result))
     return result
@@ -552,7 +623,7 @@ if __name__ == "__main__":
         #'../data/list_IndustryList.json',
         #'../data/list_USIndustryList.json',
         #'../data/list_IndexList.json',
-        '../data/list_ETFList.json',
+        #'../data/list_ETFList.json',
         '../data/list_HKEXList.json', 
         '../data/list_USIndexList.json',
         '../data/list_USETFList.json',

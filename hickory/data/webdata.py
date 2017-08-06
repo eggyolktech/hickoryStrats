@@ -84,7 +84,7 @@ def main():
     end = datetime.today()
     start = end - timedelta(days=(1*365))
 
-    bars = DataReader("2628.HK", "yahoo_direct", start, end)
+    bars = DataReader("1353.HK", "yahoo_direct", start, end)
     print(bars.tail(20))
  
 if __name__ == "__main__":

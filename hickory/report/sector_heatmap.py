@@ -38,6 +38,15 @@ def generate():
                     $("div[class='col-sm-3']").toggleClass('col-sm-3 col-sm-6');
                 }
             });
+            
+            function on(layer) {
+                document.getElementById("overlay" + layer).style.display = "block";
+            }
+
+            function off(layer) {
+                document.getElementById("overlay" + layer).style.display = "none";
+            }
+
         </script>
 
         <style>
@@ -45,13 +54,38 @@ def generate():
             .table-condensed, .row {
                 font-size: 12.5px;
             }
+            
+            .overlay {
+                position: fixed;
+                display: none;
+                width: 100%;
+                height: 100%;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                background-color: rgba(0,0,0,0.5);
+                z-index: 2;
+                cursor: pointer;
+            }
+
+            #text{
+                position: absolute;
+                top: 50%;
+                left: 50%;
+                font-size: 50px;
+                color: white;
+                transform: translate(-50%,-50%);
+                -ms-transform: translate(-50%,-50%);
+            }
+            
         </style>
     </head>
     <body>"""
 
     html = html + """<div class="container-fluid">
     <h3><img height="40" src="https://s.w.org/images/core/emoji/2.3/svg/1f413.svg"/>Goldenwokchaan Heatmap</h3>
-    <p style="font-size: 11px">TO: 25m+ / MktCap: 5B+ / RS: """ + period + """<small> (Last updated: """ + now.strftime("%Y-%m-%d %H:%M") + """)</small></p>
+    <p style="font-size: 11px">TO: 25m+ / MktCap: 2.5B+ / RS: """ + period + """<small> (Last updated: """ + now.strftime("%Y-%m-%d %H:%M") + """)</small></p>
         """
     num_rows = math.ceil(len(industries) / 4)
 
@@ -69,12 +103,13 @@ def generate():
                 
                 # if industry found
                 if (i*4 + j < len(industries)):
-                    html = html + ("""<h6><b>%s</b></h6>""" % industries[i*4 + j])
+                    stocks = stock_sector_db.get_hot_stocks_by_industry(industries[i*4 + j], period)
+                    html = html + ("""<h6><b><a href="#" onclick="on(%s)">%s</a></b> (%s)</h6>""" % (industries[i*4 + j], industries[i*4 + j], len(stocks)))
 
                     # get industry stock list
-                    html = html + """<table class="table table-striped table-bordered table-hover table-condensed">"""
+                    stk_html = """<table class="table table-striped table-bordered table-hover table-condensed">"""
                     #print(len(stock_sector_db.get_hot_stocks_by_industry(industries[i*4 + j], period)))
-                    for stock in stock_sector_db.get_hot_stocks_by_industry(industries[i*4 + j], period):
+                    for stock in stocks:
                         
                         if ("+" in stock["last_change_pct"]):
                             change_pct = "+" + "%.2f" % float(stock["last_change_pct"][1:-1]) + "%"
@@ -92,10 +127,11 @@ def generate():
                         elif (float(stock["last_vol_ratio"]) > 1.5):
                             style_bg = "background-color: lime;"
 
-                        html = html + """<tr style='""" + style_bg + """'>
+                        stk_html = stk_html + """<tr style='""" + style_bg + """'>
                                         <td><a href="/streaming.html?code=%s" target="_blank">%s</a></td><td>%s</td><td>%s</td><td style="%s">%s</td><td>%s</td>
                                         </tr>""" % (stock["code"], stock["code"], stock["name"], stock["last_close"], change_style, change_pct, "X" + "%.1f" % (stock["last_vol_ratio"]))
-                    html  = html + """</table>"""
+                    stk_html  = stk_html + """</table>"""
+                    html = html + stk_html + """<div id="%s" class="overlay" onclick="off()"><div id="text">Overlay Text</div></div>""" % ("overlay" + industries[i*4 + j])
 
                 html = html + """</div>"""
 

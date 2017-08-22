@@ -70,10 +70,10 @@ def get_technical(code):
           _1month_avg_turnover,                             #_1month_avg_turnover
           _3month_avg_turnover,                             #_3month_avg_turnover
           rf(t3.find_all("tr")[0].find_all("td")[1].text),  #_10_day_ma
-          rf(t2.find_all("tr")[1].find_all("td")[1].text),  #_50_day_ma
-          rf(t2.find_all("tr")[2].find_all("td")[1].text),  #_90_day_ma
-          rf(t2.find_all("tr")[3].find_all("td")[1].text),  #_250_day_ma
-          rf(t2.find_all("tr")[4].find_all("td")[1].text),  #_14_day_rsi
+          rf(t3.find_all("tr")[1].find_all("td")[1].text),  #_50_day_ma
+          rf(t3.find_all("tr")[2].find_all("td")[1].text),  #_90_day_ma
+          rf(t3.find_all("tr")[3].find_all("td")[1].text),  #_250_day_ma
+          rf(t3.find_all("tr")[4].find_all("td")[1].text),  #_14_day_rsi
     )
     #print(sd)
     return sd 
@@ -114,8 +114,8 @@ def get_info(code):
 
 def main():
 
-    print(get_info('3993'))
-    print(get_technical('3993'))
+    #print(get_info('3993'))
+    print(get_technical('175'))
 if __name__ == "__main__":
     main()                
               

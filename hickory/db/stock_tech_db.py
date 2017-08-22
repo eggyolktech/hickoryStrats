@@ -42,10 +42,18 @@ def init():
        _1MONTH_AVG_TURNOVER NUMERIC,
        _3MONTH_AVG_TURNOVER NUMERIC,
        _10_DAY_MA            NUMERIC,
+       _30_DAY_MA           NUMERIC,
        _50_DAY_MA            NUMERIC,
        _90_DAY_MA            NUMERIC,
        _250_DAY_MA           NUMERIC,
-       _14_DAY_RSI           NUMERIC
+       _14_DAY_RSI           NUMERIC,
+       _100_DAY_MA          NUMERIC,
+       _150_DAY_MA          NUMERIC,
+       _200_DAY_MA          NUMERIC,
+       Y8_ENTRY_DATE        TEXT,
+       Y8_ENTRY_PRICE       NUMERIC,
+       MACD_X_OVER_DATE     TEXT,
+       MACD_DIVERGENCE      NUMERIC
        );''')
 
     print("Table created successfully")
@@ -61,7 +69,6 @@ def list_stocks_tech():
 
     conn.close()
 
-
 def get_stock_tech(code):
 
     code = code.zfill(5)
@@ -75,14 +82,33 @@ def get_stock_tech(code):
 
     c = conn.cursor()
     c.execute(sql, t)
-
+    
     names = [d[0] for d in c.description]
-    stock = [dict(zip(names, row)) for row in c.fetchall()][0]
+   
+    rows = c.fetchall() 
+    if (rows):
+        stock = [dict(zip(names, row)) for row in rows][0]
     conn.close()
     
     return stock
 
-def manage_stock_tech(stock_tuple):
+def get_all_stocks_code():
+
+    conn = sqlite3.connect(DB_FILE)
+    stocks = []
+
+    sql = "select code from stocks_tech order by code"
+    c = conn.cursor()
+    c.execute(sql)
+
+    rows = c.fetchall()
+    for row in rows:
+        stocks.append(row[0])
+
+    conn.close()
+    return stocks
+
+def manage_stock_tech(stock_tuple, is_ext=False):
 
     conn = sqlite3.connect(DB_FILE)
 
@@ -91,19 +117,42 @@ def manage_stock_tech(stock_tuple):
     
     # There is record already
     if (cursor.fetchone()):
+ 
+        if (is_ext):
+           s = "UPDATE STOCKS_TECH SET _30_DAY_MA=?, _100_DAY_MA=?, _150_DAY_MA=?, _200_DAY_MA=? WHERE CODE=?" 
+        else:
+           s = "UPDATE STOCKS_TECH SET NAME=?, AUTHORIZED_CAPITAL=?, ISSUED_CAPITAL=?, ISSUED_CAPITAL_H=?, NAV=?, EPS=?, PE=?, DPS=?, YIELD=?, PNAV=?, _1MONTH_CHANGE=?, _3MONTH_CHANGE=?, _52WEEK_CHANGE=?, _1MONTH_HSI_RELATIVE=?, _3MONTH_HSI_RELATIVE=?, _52WEEK_HSI_RELATIVE=?, MARKET_CAPITAL=?, _52WEEK_HIGH=?, _52WEEK_LOW=?, _1MONTH_AVG_VOL=?, _3MONTH_AVG_VOL=?, LAST_CLOSE=?, _1MONTH_AVG_TURNOVER=?, _3MONTH_AVG_TURNOVER=?, _10_DAY_MA=?, _50_DAY_MA=?, _90_DAY_MA=?, _250_DAY_MA=?, _14_DAY_RSI=? WHERE CODE=?"
+
         t = (stock_tuple[1:]) + (stock_tuple[0],)
-        conn.execute("UPDATE STOCKS_TECH SET NAME=?, AUTHORIZED_CAPITAL=?, ISSUED_CAPITAL=?, ISSUED_CAPITAL_H=?, NAV=?, EPS=?, PE=?, DPS=?, YIELD=?, PNAV=?, _1MONTH_CHANGE=?, _3MONTH_CHANGE=?, _52WEEK_CHANGE=?, _1MONTH_HSI_RELATIVE=?, _3MONTH_HSI_RELATIVE=?, _52WEEK_HSI_RELATIVE=?, MARKET_CAPITAL=?, _52WEEK_HIGH=?, _52WEEK_LOW=?, _1MONTH_AVG_VOL=?, _3MONTH_AVG_VOL=?, LAST_CLOSE=?, _1MONTH_AVG_TURNOVER=?, _3MONTH_AVG_TURNOVER=?, _10_DAY_MA=?, _50_DAY_MA=?, _90_DAY_MA=?, _250_DAY_MA=?, _14_DAY_RSI=? WHERE CODE=?", t)
+ 
+        conn.execute(s, t)
+        conn.commit()
         conn.close()
         print("[" + stock_tuple[0] + "] TECH INFO UPDATED - " + stock_tuple[1])
         return True
     # Blank new case
     else:
+
+        if(is_ext):
+            print("[" + stock_tuple[0] + "] HAVE NO BASIC RECORD FOUND!")
+            return False
+
         t = stock_tuple
         conn.execute("INSERT INTO STOCKS_TECH (CODE, NAME, AUTHORIZED_CAPITAL, ISSUED_CAPITAL, ISSUED_CAPITAL_H, NAV, EPS, PE, DPS, YIELD, PNAV, _1MONTH_CHANGE, _3MONTH_CHANGE, _52WEEK_CHANGE, _1MONTH_HSI_RELATIVE, _3MONTH_HSI_RELATIVE, _52WEEK_HSI_RELATIVE, MARKET_CAPITAL, _52WEEK_HIGH, _52WEEK_LOW, _1MONTH_AVG_VOL, _3MONTH_AVG_VOL, LAST_CLOSE, _1MONTH_AVG_TURNOVER, _3MONTH_AVG_TURNOVER, _10_DAY_MA, _50_DAY_MA, _90_DAY_MA, _250_DAY_MA, _14_DAY_RSI) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", t)
         conn.commit()
         conn.close()
         print("[" + stock_tuple[0] + "] TECH INFO INSERTED - " + stock_tuple[1])
         return True
+
+def update_stock_macd(code, macd_date, divergence):
+
+    conn = sqlite3.connect(DB_FILE)
+
+    t = (macd_date, divergence, code)
+    conn.execute("UPDATE STOCKS_TECH SET MACD_X_OVER_DATE=?, MACD_DIVERGENCE=? WHERE CODE = ?", t)
+    conn.commit()
+    conn.close()
+    return True
 
 def update_stock_vol(code, last_close, last_change_pct, last_vol):
 
@@ -143,7 +192,9 @@ def main(args):
     #list_stocks()
     #remove_stock('1357')
     #list_stocks_tech()
-    print(get_stock_tech("566"))
+    #print(get_stock_tech("8229"))
+    #print(get_stock_tech("8"))
+    print(get_all_stocks_code())
  
 if __name__ == "__main__":
     main(sys.argv[1:])        

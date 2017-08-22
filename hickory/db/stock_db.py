@@ -48,6 +48,7 @@ def manage_stock(cat, code, name, industryLv1, industryLv2, industryLv3, lotSize
     if (cursor.fetchone()):
         t = (cat, name, industryLv1, industryLv2, industryLv3, lotSize, mktCap, code)
         conn.execute("UPDATE STOCKS SET CAT=?, NAME=?, INDUSTRY_LV1=?, INDUSTRY_LV2=?, INDUSTRY_LV3=?, LOT_SIZE=?, MKT_CAP=? WHERE CODE=?", t)
+        conn.commit()
         conn.close()
         return True
     # Blank new case

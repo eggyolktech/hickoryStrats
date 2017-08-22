@@ -7,6 +7,7 @@ import datetime
 from datetime import tzinfo, timedelta, datetime
 import time
 import resource
+import sys
 import os
 import matplotlib as mpl
 if os.environ.get('DISPLAY','') == '':
@@ -26,6 +27,7 @@ from hickory.core.hickory_base import Strategy
 from hickory.telegram import bot_sender
 from hickory.util import yahoo_session_loader, ftp_uploader, git_util, mem_util
 from hickory.data import webdata
+from hickory.db import stock_tech_db
 from hickory.crawler.hkex import securities_list
 from market_watch import quick_tracker
 from market_watch.db import stock_tracker_db
@@ -35,7 +37,7 @@ DEL = "\n\n"
 STOC_HIGHER_LIMIT = 75
 STOC_LOWER_LIMIT = 25 
 MONITOR_PERIOD = 20
-MIN_TURNOVER = 10
+MIN_TURNOVER = 3
 EXPORT_REPO = "/app/hickoryStratsWatcher/"
 
 class TimeFrame(Enum):
@@ -335,7 +337,7 @@ def retrieve_bars_data(symbol, datasrc, start, end):
     return bars  
 
 def generate_scanner_result(symbol, period, datasrc='yahoo_direct'):
- 
+    #period = "DAILY" 
     end = datetime.today()
     start = end
     result = []
@@ -405,15 +407,22 @@ def generate_scanner_result(symbol, period, datasrc='yahoo_direct'):
     lastdiv = signals.tail(1).divergence.iloc[0]
     
     #print(signals.tail(20))  
+    #print(len(signals.ix[signals.macd_positions == 1.0].index))
     if(len(signals.ix[signals.macd_positions == 1.0].index) > 0 and lastmacd == 1.0):    
         
         then = signals.ix[signals.macd_positions == 1.0].index[-1].date()
         now = datetime.now().date()
         difference =  (now - then) / timedelta(days=1)
-        
+
+        #print(period + " - " + symbol.replace(".HK","").zfill(5) + " - " + then.strftime('%Y%m%d') + " - " + str(lastdiv))
+        if (period == "DAILY"):
+            stock_tech_db.update_stock_macd(symbol.replace(".HK","").zfill(5), then.strftime('%Y%m%d'), lastdiv) 
+  
         if (difference < MONITOR_PERIOD):
             print(symbol + " " + period + ": [" + str(then) + ", " +  str(difference) + " days ago at MACD, avg turnover: [" + str(mean_turnover) + ", $" + str(lastclose) +  "]")
             macd_result = "M" + str(difference)
+    else:
+        stock_tech_db.update_stock_macd(symbol.replace(".HK","").zfill(5), "-", lastdiv)
 
     if (stoch_result and macd_result and (mean_turnover == 0 or mean_turnover/1000000>=MIN_TURNOVER)):
         chart_path = "" #generate_scanner_chart(symbol, period, bars, signals)[0]
@@ -594,7 +603,7 @@ def saveSignalDictToJs(signalDict, tfEnum, filetype):
         the_file.write("var " + filepfx + " =" + json_data + ";")         
      
     # upload to scicube
-    ftp_uploader.upload_to_scicube(filedir + filepath)
+    #ftp_uploader.upload_to_scicube(filedir + filepath)
     
     print("File dumped: [" + filesub + filepath + "]")
     
@@ -607,6 +616,9 @@ if __name__ == "__main__":
 
     weekno = datetime.today().weekday()
     tf = TimeFrame.DAILY
+
+    #generate_scanner_result("1979.HK", "DAILY")
+    #sys.exit(1)    
 
     if weekno > 0 and weekno <= 5:
         print("Run Daily Scanner on Weekday ......")

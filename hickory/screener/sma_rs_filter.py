@@ -10,10 +10,10 @@ import locale
 import concurrent.futures
 import time
 
-from hickory.util import config_loader, stock_util
+from hickory.util import config_loader, stock_util, mem_util
 from hickory.crawler.aastocks import stock_quote, stock_info
-from hickory.db import stock_tech_db, stock_sector_db
-from hickory.report import sector_heatmap
+from hickory.db import stock_tech_db, stock_sector_db, stock_mag8_db
+from hickory.report import sector_heatmap, y8_report, v8_report
 
 config = config_loader.load()
 
@@ -34,6 +34,7 @@ def generate():
 def manageStockTech(code):
     
     st = stock_info.get_technical(code)
+    print(st)
     result = stock_tech_db.manage_stock_tech(st)
     return result
 
@@ -70,7 +71,7 @@ def manageStockVol(code):
 
 def generate_VOL_MT(stocks, num_workers=1):
 
-    print(stocks)
+    #print(stocks)
 
     # We can use a with statement to ensure threads are cleaned up promptly
     with concurrent.futures.ThreadPoolExecutor(max_workers=num_workers) as executor:
@@ -89,6 +90,7 @@ def generate_VOL_MT(stocks, num_workers=1):
 
 def main(args):
 
+    mem_util.set_max_mem(50)
     start_time = time.time()
     NO_OF_WORKER = 5
 
@@ -98,9 +100,15 @@ def main(args):
         #for period in ["1m", "3m", "1y"]:
         generate_VOL_MT(stock_sector_db.get_hot_stocks_code("ALL"), NO_OF_WORKER-1)
         sector_heatmap.generate() 
-
+        generate_VOL_MT(stock_mag8_db.get_mag8_stocks_list(), NO_OF_WORKER-1)
+        y8_report.generate()    
+    elif (len(args) > 1 and args[1] == "gen_all_vol"):
+        generate_VOL_MT(stock_tech_db.get_all_stocks_code(), NO_OF_WORKER-1)
+        v8_report.generate()
     else:
-        print("OPTS: gen_tech | gen_vol")
+        print("OPTS: gen_tech | gen_vol | gen_all_vol")
+        print(manageStockTech("191"))
+        print(manageStockVol("191"))
 
     #generate()
     print("Time elapsed: " + "%.3f" % (time.time() - start_time) + "s")

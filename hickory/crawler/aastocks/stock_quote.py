@@ -261,7 +261,7 @@ def get_stock_quote(code):
         f_vol_now = float(stock_util.rf(quote_result["Volume"]))
     
     stk = stock_tech_db.get_stock_tech(code)
-    print(stk)
+    #print(stk)
     if (stk and stk["_3MONTH_AVG_VOL"]):
         f_vol_avg_3mth = float(stk["_3MONTH_AVG_VOL"])
 
@@ -314,24 +314,26 @@ def get_quote_message(code, region="HK", simpleMode=True):
         direction = u'\U0001F539'
 
         if (quote_result["Direction"] == "UP"):
-            direction = u'\U0001F53C'
+            direction = u'\U0001F332'
         elif (quote_result["Direction"] == "DOWN"):
-            direction = u'\U0001F53D'
+            direction = u'\U0001F53B'
 
         passage = "<b>" + quote_result["CodeName"] + "</b>" + EL
-        passage = passage + direction + " " + locale.currency(float(quote_result["Close"])) + " (" + quote_result["ChangeVal"] + "/" + quote_result["ChangePercent"] + ")" + EL
+        passage = passage + direction + "" + locale.currency(float(quote_result["Close"])) + " (" + quote_result["ChangeVal"] + "/" + quote_result["ChangePercent"] + ")" + EL
         passage = passage + quote_result["Range"] + " (" + quote_result["Volume"] + "/" + quote_result["Turnover"] + ")"+ EL
 
         icon_v2v = ""
         if ("V2V" in quote_result):
             if (float(quote_result["V2V"]) > 1.5):
                  icon_v2v = u'\U0001F414'
+            elif (float(quote_result["V2V"]) > 1.0):
+                 icon_v2v = u'\U0001F424'
             passage = passage + icon_v2v +  "V/AV " + "x" + quote_result["V2V"] + EL
        
         if (not quote_result["52WeekHigh"] == "N/A" and not quote_result["52WeekLow"] == "N/A"):
-            if (float(quote_result["Close"])) > float(quote_result["52WeekHigh"]):
+            if (float(quote_result["Close"])) > float(quote_result["52WeekHigh"].replace(",","")):
                 passage = passage + u'\U0001F525' + "<i>52 Week High</i>" + EL
-            elif (float(quote_result["Close"])) < float(quote_result["52WeekLow"]):
+            elif (float(quote_result["Close"])) < float(quote_result["52WeekLow"].replace(",","")):
                 passage = passage + u'\U00002744' + "<i>52 Week Low</i>" + EL 
         
         if (simpleMode):
@@ -361,12 +363,12 @@ def main():
     #for key, value in quote.items():
     #    print(key, ":", value)
 
-    #print(get_quote_message('2628', "HK", False))
-    print(get_quote_message('000001',"CN", False))
+    print(get_quote_message('2840', "HK", False))
+    #print(get_quote_message('000001',"CN", False))
  
-    print(get_quote_message('JPM',"US", False))
-    print(get_quote_message('MSFT',"US", False))
-    print(get_quote_message('AMZN',"US", False))
+    #print(get_quote_message('JPM',"US", False))
+    #print(get_quote_message('MSFT',"US", False))
+    #print(get_quote_message('AMZN',"US", False))
 
 if __name__ == "__main__":
     main()                

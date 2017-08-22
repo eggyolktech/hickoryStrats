@@ -5,9 +5,10 @@ import sys
 DB_FILE = '/app/hickoryStrats/hickory/db/stock_db.dat'
 F_TURNOVER = '_3MONTH_AVG_TURNOVER'
 F_RELATIVE_MAP = {'1m':'_1MONTH_HSI_RELATIVE', '3m':'_3MONTH_HSI_RELATIVE', '1y':'_52WEEK_HSI_RELATIVE'}
-LIMIT_MKT_CAP = 5 * 1000000000
-LIMIT_TURNOVER = 25 * 1000000
+LIMIT_MKT_CAP = 2 * 1000000000
+LIMIT_TURNOVER = 20 * 1000000
 LIMIT_HOT = "100"
+THRESHOLD_RS = "5"
 
 def init():
 
@@ -19,9 +20,10 @@ def init():
     
 def get_hot_stocks_where_sql(period):
 
-    where_sql = " from stocks_tech, stocks where stocks.code = stocks_tech.code and "
-            + F_TURNOVER + " > ? and stocks.MKT_CAP > ? order by "
-            + F_RELATIVE_MAP[period] + " desc limit " + LIMIT_HOT
+    where_sql = (" from stocks_tech, stocks where stocks.code = stocks_tech.code and "
+            + F_TURNOVER + " > ? and stocks.MKT_CAP > ? and "
+            + F_RELATIVE_MAP[period] + " > " + THRESHOLD_RS
+            + " order by " + F_RELATIVE_MAP[period] + " desc limit " + LIMIT_HOT)
             
     return where_sql
 
@@ -56,7 +58,7 @@ def get_hot_stocks_code(period):
 
     stocks = [row[0] for row in c.fetchall()]
 
-    print(len(stocks))
+    print("Size: " + str(len(stocks)))
     return stocks
 
 
@@ -69,25 +71,23 @@ def get_hot_stocks_by_industry(industry, period):
     if (period in F_RELATIVE_MAP):
 
         t = (LIMIT_TURNOVER, LIMIT_MKT_CAP, industry)
-        sql = ("select * from (select stocks.code, stocks.industry_lv2, stocks.name, last_close, last_change_pct, last_vol_ratio, "
-            + F_RELATIVE_MAP[period] + get_hot_stocks_where_sql(period) + " ) where INDUSTRY_LV2 = ?;")
+        sql = ("select * from (select stocks.code, stocks.industry_lv2, stocks.name, stocks_tech.*"
+            + get_hot_stocks_where_sql(period) + " ) where INDUSTRY_LV2 = ? order by " + F_RELATIVE_MAP[period] + ";")
 
     elif (period == "ALL"):
         t = (LIMIT_TURNOVER, LIMIT_MKT_CAP, LIMIT_TURNOVER, LIMIT_MKT_CAP, LIMIT_TURNOVER, LIMIT_MKT_CAP, industry)
         
         sql = ("select * from ("
-            + "select * from (Select stocks.code, stocks.industry_lv2, stocks.name,last_close, last_change_pct, last_vol_ratio,"
-            + F_RELATIVE_MAP['1m'] + "," + F_RELATIVE_MAP['3m'] + "," + F_RELATIVE_MAP['1y']
+            + "select * from (Select stocks.code, stocks.industry_lv2, stocks.name, stocks_tech.* "
             + get_hot_stocks_where_sql("1m") + ") "
             + " UNION "
-            + "select * from (Select stocks.code, stocks.industry_lv2, stocks.name, last_close, last_change_pct, last_vol_ratio,"
-            + F_RELATIVE_MAP["1m"] + "," + F_RELATIVE_MAP["3m"] + "," + F_RELATIVE_MAP["1y"]
+            + "select * from (Select stocks.code, stocks.industry_lv2, stocks.name, stocks_tech.* "
             + get_hot_stocks_where_sql("3m") + ") "
             + "UNION "
-            + "select * from (Select stocks.code, stocks.industry_lv2, stocks.name, last_close, last_change_pct, last_vol_ratio,"
-            + F_RELATIVE_MAP["1m"] + "," + F_RELATIVE_MAP["3m"] + "," + F_RELATIVE_MAP["1y"]
+            + "select * from (Select stocks.code, stocks.industry_lv2, stocks.name, stocks_tech.* "
             + get_hot_stocks_where_sql("1y") + ") "
-            + " ) where industry_lv2 = ?;")
+            + " ) where industry_lv2 = ? order by " + F_RELATIVE_MAP["1y"] + " DESC, " 
+            + F_RELATIVE_MAP["3m"] + " DESC, " + F_RELATIVE_MAP["1m"] +  " DESC;")
 
     c = conn.cursor()
     c.execute(sql, t)
@@ -151,11 +151,12 @@ def main(args):
     #print(get_hot_industries("1m"))
     #print(get_hot_industries("3m"))
     #print(get_hot_industries("1y"))
-    print(get_hot_industries("ALL"))
+    #print(get_hot_industries("ALL"))
 
+    print(get_hot_stocks_by_industry("公用事業","1m"))
     print(get_hot_stocks_by_industry("公用事業","ALL"))
 
-    print(get_hot_stocks_code("ALL"))
+    #print(get_hot_stocks_code("ALL"))
 
     '''import math
     industries = get_hot_industries("1m")

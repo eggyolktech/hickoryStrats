@@ -113,7 +113,7 @@ def generate():
           $(document).ready(function() {
             var table = $('table');
             
-            $('#1_header, #2_header', '#3_header, #4_header', '#5_header, #6_header', '#7_header, #8_header', '#9_header, #10_header', '#11_header, #12_header', '#13_header, #14_header', '#15_header, #16_header', '#17_header, #18_header', '#19_header, #20_header', '#21_header, #22_header', '#23_header')
+            $('#1_header, #2_header, #3_header, #4_header, #5_header, #6_header, #7_header, #8_header, #9_header, #10_header, #11_header, #12_header, #13_header, #14_header, #15_header, #16_header, #17_header, #18_header, #19_header, #20_header, #21_header, #22_header, #23_header')
                 .wrapInner('<span title="Sort this column"/>')
                 .each(function(){
                     

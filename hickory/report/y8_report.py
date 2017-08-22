@@ -83,6 +83,12 @@ def generate():
                 font-size: 11px;
             }
             
+            .flink {
+                 cursor:pointer;
+                 color:blue;
+                 text-decoration:underline;
+            }
+            
             .overlay {
                 position: fixed;
                 display: none;
@@ -157,10 +163,10 @@ def generate():
         """
     
     stk_html = """<table class="table table-striped table-bordered table-hover table-condensed">
-            <tr>
+            <tr class="flink">
                 <th id="1_header">Code</th><th id="2_header">Name</th><th id="3_header">Last Close</th>
                 <th id="4_header">V/AV</th><th id="5_header">NAV</th><th id="6_header">PE</th><th id="7_header">YIELD</th>
-                <th id="8_header">1m?%</th><th id="9_header">3m?%</th><th id="10_header">1y?%</th><th id="11_header">1mRS%</th>
+                <th id="8_header">1m%</th><th id="9_header">3m%</th><th id="10_header">1y%</th><th id="11_header">1mRS%</th>
                 <th id="12_header">3mRS%</th><th id="13_header">1yRS%</th><th id="14_header">MktCap</th><th id="15_header">52WkL</th>
                 <th id="16_header">52WkH</th><th id="17_header">3mVol</th><th id="18_header">ma30</th>
                 <th id="19_header">ma50</th><th id="20_header">ma150</th><th id="21_header">ma200</th><th id="22_header">macd Xup</th><th id="23_header">since</th>

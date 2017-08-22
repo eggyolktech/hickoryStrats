@@ -75,6 +75,7 @@ def generate():
         <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
         <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
         <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
+        <script type="text/javascript" src="https://rawgithub.com/padolsey/jQuery-Plugins/master/sortElements/jquery.sortElements.js"></script>  
 
         <style>
 
@@ -107,6 +108,46 @@ def generate():
             }
             
         </style>
+        <script>
+   
+          $(document).ready(function() {
+            var table = $('table');
+            
+            $('#1_header, #2_header', '#3_header, #4_header', '#5_header, #6_header', '#7_header, #8_header', '#9_header, #10_header', '#11_header, #12_header', '#13_header, #14_header', '#15_header, #16_header', '#17_header, #18_header', '#19_header, #20_header', '#21_header, #22_header', '#23_header')
+                .wrapInner('<span title="Sort this column"/>')
+                .each(function(){
+                    
+                    var th = $(this),
+                        thIndex = th.index(),
+                        inverse = false;
+                    
+                    th.click(function(){
+                        
+                        table.find('td').filter(function(){
+                            
+                            return $(this).index() === thIndex;
+                            
+                        }).sortElements(function(a, b){
+                            
+                            return $.text([a]) > $.text([b]) ?
+                                inverse ? -1 : 1
+                                : inverse ? 1 : -1;
+                            
+                        }, function(){
+                            
+                            // parentNode is the element we want to move
+                            return this.parentNode; 
+                            
+                        });
+                        
+                        inverse = !inverse;
+                            
+                    });
+                        
+                });   
+          });
+          
+        </script>         
     </head>
     <body>"""
 
@@ -117,12 +158,12 @@ def generate():
     
     stk_html = """<table class="table table-striped table-bordered table-hover table-condensed">
             <tr>
-                <th>Code</th><th>Name</th><th>Last Close</th>
-                <th>V/AV</th><th>NAV</th><th>PE</th><th>YIELD</th>
-                <th>1mΔ%</th><th>3mΔ%</th><th>1yΔ%</th><th>1mRS%</th>
-                <th>3mRS%</th><th>1yRS%</th><th>MktCap</th><th>52WkL</th>
-                <th>52WkH</th><th>3mVol</th><th>ma30</th>
-                <th>ma50</th><th>ma150</th><th>ma200</th><th>macd Xup</th><th>since</th>
+                <th id="1_header">Code</th><th id="2_header">Name</th><th id="3_header">Last Close</th>
+                <th id="4_header">V/AV</th><th id="5_header">NAV</th><th id="6_header">PE</th><th id="7_header">YIELD</th>
+                <th id="8_header">1m?%</th><th id="9_header">3m?%</th><th id="10_header">1y?%</th><th id="11_header">1mRS%</th>
+                <th id="12_header">3mRS%</th><th id="13_header">1yRS%</th><th id="14_header">MktCap</th><th id="15_header">52WkL</th>
+                <th id="16_header">52WkH</th><th id="17_header">3mVol</th><th id="18_header">ma30</th>
+                <th id="19_header">ma50</th><th id="20_header">ma150</th><th id="21_header">ma200</th><th id="22_header">macd Xup</th><th id="23_header">since</th>
             </tr>
 
                 """

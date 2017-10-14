@@ -23,6 +23,8 @@ from hickory.util import yahoo_session_loader
 
 EL = "\n"
 DEL = "\n\n"
+YAHOO_LIMIT = 50
+
 
 def is_number(s):
     try:
@@ -33,11 +35,20 @@ def is_number(s):
 
 def DataReader(symbol, datasrc, start, end):
 
+#    print("DataReader: " + symbol + "," + datasrc + "," + str(start) + "," + str(end))
+
     if (datasrc == "yahoo"):
         bars = web.DataReader(symbol, datasrc, start, end)
     elif (datasrc == "yahoo_direct"):
         #try:
         bars = retrieve_bars_data_from_yahoo(symbol, datasrc, start, end)
+
+#        if (bars == None):
+#            print("Symbol empty: " + symbol)
+
+        if (len(bars) <= 50):
+            #print("Issue in Yahoo API, switching to use Google")
+            bars = retrieve_bars_data_from_google(symbol)
         #except:
         #       
     elif (datasrc == "google"):
@@ -58,8 +69,10 @@ def retrieve_bars_data_from_yahoo(symbol, datasrc, start, end):
     start_epoch = str(start.timestamp()).split(".")[0]
     end_epoch = str(end.timestamp()).split(".")[0]
 
-    symbol = symbol.replace(".US", "")
-
+    if (".US" in symbol):
+        symbol = symbol.replace(".US", "")
+        symbol = symbol.replace(".", "-")
+    
     #print("Retrieving data for [" + symbol + "] from " + str(start_epoch) + " to " + str(end_epoch))
 
     cookies = None
@@ -72,7 +85,7 @@ def retrieve_bars_data_from_yahoo(symbol, datasrc, start, end):
     if (cookies and crumb):
 
         url = 'https://query1.finance.yahoo.com/v7/finance/download/'  + symbol + '?period1=' + start_epoch + '&period2=' + end_epoch + '&interval=1d&events=history&crumb=' + crumb
-
+        
         response = requests.get(url, cookies=cookies)
         #print("url: " + url);
         #print(response.content.decode("utf-8"))
@@ -170,13 +183,15 @@ def main():
 
     print("main....")
     end = datetime.today()
-    start = end - timedelta(days=(1*365))
+    #start = end - timedelta(days=(1*365))
+    start = end - timedelta(days=(1*400))
 
-    bars = DataReader("1333.HK", "google", start, end)
-    print(bars.tail(20))
+    #bars = DataReader("0923.HK", "yahoo_direct", start, end)
+    bars = DataReader("ACTL", "yahoo_direct", start, end)
+    print(bars.tail(200))
  
-    bars = DataReader("1353.HK", "google", start, end)
-    print(bars.tail(20))
+    #bars = DataReader("1353.HK", "google", start, end)
+    #print(bars.tail(20))
  
 if __name__ == "__main__":
     main()                

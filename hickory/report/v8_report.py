@@ -13,7 +13,7 @@ from hickory.util import config_loader, stock_util as su
 from hickory.crawler.aastocks import stock_quote, stock_info
 import traceback
 import logging
-from hickory.db import stock_mag8_db
+from hickory.db import stock_mag8_db, stock_us_mag8_db
 
 config = config_loader.load()
 period = "ALL"
@@ -55,12 +55,15 @@ def fnum(number):
     else:
         return number
 
-def generate():
+def generate(region="HK"):
 
     locale.setlocale(locale.LC_ALL, '')
     now = datetime.datetime.now()
     
-    stocks = stock_mag8_db.get_full_stocks_by_vol()
+    if (region == "US"):
+        stocks = stock_us_mag8_db.get_full_stocks_by_vol()
+    else:
+        stocks = stock_mag8_db.get_full_stocks_by_vol()
 
     html = """<html>
     <head>
@@ -122,13 +125,22 @@ def generate():
                 """
 
     for stock in stocks:    
-
+        print(stock["CODE"] + " - " + str(stock["LAST_CLOSE"]) + " - " + str(stock["_52WEEK_HIGH"]))
         if (stock["_52WEEK_HIGH"] and stock["LAST_CLOSE"] > stock["_52WEEK_HIGH"]):
             img_sup = "<img src='http://images.emojiterra.com/emojione/v2/512px/1f525.png' width='15' style='vertical-align: top'/>"
         else:
             img_sup = ""
 
-        name_text = "<a href='http://aastocks.com/tc/stocks/analysis/company-fundamental/?symbol=" + stock["CODE"] + "' target='_blank'>" + stock["stockname"] + "</a>" + img_sup + " (" + stock["INDUSTRY_LV2"] + ")"
+        if (region == "US"):
+            surl = "https://finance.google.com/finance?q="
+            sector = stock["INDUSTRY_LV1"]
+            industry = stock["INDUSTRY_LV2"]
+        else:
+            sector = stock["INDUSTRY_LV2"]
+            industry = stock["INDUSTRY_LV3"]
+            surl = "http://aastocks.com/tc/stocks/analysis/company-fundamental/?symbol="
+
+        name_text = "<a href='" + surl + stock["CODE"] + "' target='_blank'>" + stock["stockname"] + "</a>" + img_sup + " (" + sector + ">" + industry +")"
     
         lcp = stock["LAST_CHANGE_PCT"]
         lvr = stock["LAST_VOL_RATIO"]
@@ -148,6 +160,11 @@ def generate():
 
         row_text = ""
         style_bg = ""
+
+        if (region == "US"):
+            nav = "N/A"
+        else:
+            nav = su.rfNum(stock["NAV"], 2)
  
         try:
             row_text = """<tr style='""" + style_bg + """'>
@@ -158,7 +175,7 @@ def generate():
                       <td>%s</td><td>%s</td><td>%s</td><td>%s</td>
                       <td>%s</td><td>%s</td><td>%s</td>
                       <td>%s</td><td>%s</td><td>%s</td>
-                  </tr>""" % (stock["CODE"], stock["CODE"], name_text, stock["LAST_CLOSE"], fpct(lcp), vol_ratio, su.rfNum(stock["NAV"], 2), stock["PE"], stock["YIELD"], fnum(stock["_1MONTH_CHANGE"]), fnum(stock["_3MONTH_CHANGE"]), fnum(stock["_52WEEK_CHANGE"]), fnum(stock["_1MONTH_HSI_RELATIVE"]), fnum(stock["_3MONTH_HSI_RELATIVE"]), fnum(stock["_52WEEK_HSI_RELATIVE"]), su.rf2s(stock["MARKET_CAPITAL"]), stock["_52WEEK_LOW"], stock["_52WEEK_HIGH"], su.rf2s(stock["_3MONTH_AVG_TURNOVER"]), stock["_30_DAY_MA"], stock["_50_DAY_MA"], stock["_150_DAY_MA"], stock["_200_DAY_MA"])
+                  </tr>""" % (stock["CODE"], stock["CODE"], name_text, stock["LAST_CLOSE"], fpct(lcp), vol_ratio, nav, stock["PE"], stock["YIELD"], fnum(stock["_1MONTH_CHANGE"]), fnum(stock["_3MONTH_CHANGE"]), fnum(stock["_52WEEK_CHANGE"]), fnum(stock["_1MONTH_HSI_RELATIVE"]), fnum(stock["_3MONTH_HSI_RELATIVE"]), fnum(stock["_52WEEK_HSI_RELATIVE"]), su.rf2s(stock["MARKET_CAPITAL"]), stock["_52WEEK_LOW"], stock["_52WEEK_HIGH"], su.rf2s(stock["_3MONTH_AVG_VOL"]),su.rfNum(stock["_30_DAY_MA"], 2),su.rfNum(stock["_50_DAY_MA"], 2),su.rfNum(stock["_150_DAY_MA"], 2),su.rfNum(stock["_200_DAY_MA"], 2))
 
         except:
             logging.error(" Error generating html")
@@ -170,18 +187,24 @@ def generate():
     html = html + stk_html  
     html = html + """</div>"""
     html = html + """</body></html>"""
-
+    #print(html)
     print("Generating Report ...")
     #print(html)
     soup = BeautifulSoup(html, "html.parser")
 
-    text_file = open("/var/www/eggyolk.tech/html/screener.html", "w")
+    reg = ""
+
+    if (region == "US"):
+        reg = "_us"
+
+    text_file = open("/var/www/eggyolk.tech/html/screener%s.html" % reg, "w")
     text_file.write(soup.prettify())
     text_file.close()
 
 def main():
     
     generate()
+    generate("US")
 
 if __name__ == "__main__":
     main() 

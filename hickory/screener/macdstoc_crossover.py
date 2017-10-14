@@ -430,10 +430,14 @@ def generate_scanner_result(symbol, period, datasrc='yahoo_direct'):
         description = stoch_result.replace(".0", "") + ", " + macd_result.replace(".0","") + ", " + turnover + ", " + str('%.4f' % lastdiv)
         if ("M1," in description or "S1, " in description):
             info_str = "" + symbol.replace(".HK", "") + " @<b>" + period[:1] + " [" + description + "]" + "</b>"
+            result.append(command + info_str)
+            result.append(chart_path)
+        elif ("M2," in description or "S2, " in description):
+            info_str = symbol.replace(".HK", "") + " @" + period[:1] + " [" + description + "]"
+            result.append(command + info_str)
+            result.append(chart_path)
         else:
             info_str = symbol.replace(".HK", "") + " @" + period[:1] + " [" + description + "]" 
-        result.append(command + info_str)
-        result.append(chart_path)
         
         region = "US"
         if (".HK" in symbol):

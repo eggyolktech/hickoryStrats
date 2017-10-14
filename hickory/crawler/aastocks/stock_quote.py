@@ -4,8 +4,10 @@ from bs4 import BeautifulSoup
 import requests
 import locale
 import re
-from hickory.db import stock_tech_db
+from hickory.db import stock_tech_db, stock_db
 from hickory.util import stock_util
+from hickory.crawler.google import stock_quote as google_stock_quote
+from hickory.crawler.money18 import stock_quote as m18_stock_quote
 #from market_watch.db import market_db
 
 EL = "\n"
@@ -19,7 +21,7 @@ def get_cn_stock_quote(code):
 
     url = "http://www.aastocks.com/en/cnhk/quote/detail-quote.aspx?shsymbol=" + code
 
-    print("URL: [" + url + "]")
+    #print("URL: [" + url + "]")
     
     quote_result = {}
 
@@ -77,8 +79,9 @@ def get_cn_stock_quote(code):
     #print(wk_range)
     divgrid = soup.find("div", {"class": "grid_11"})
     last_update = divgrid.findAll("div", {"class": "content"}, recursive=False)[1].find("span", {"class": "cls"}).text
-    
+   
     quote_result["CodeName"] = name
+
     quote_result["Close"] = l_close
     quote_result["ChangeVal"] = change_val
     quote_result["ChangePercent"] = change_pct
@@ -116,7 +119,7 @@ def get_us_stock_quote(code):
 
     url = "http://www.aastocks.com/en/usq/quote/quote.aspx?symbol=" + code
 
-    print("URL: [" + url + "]")
+    #print("URL: [" + url + "]")
     quote_result = {}
 
     headers = {'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/39.0.2171.95 Safari/537.36'}
@@ -211,8 +214,22 @@ def get_us_stock_quote(code):
    
     return quote_result
 
+def is_derivative(code):
 
-def get_stock_quote(code):
+    if (not code.isdigit()):
+        return False
+    else:
+        code = code.lstrip("0")
+        if (len(code) == 5 and code[0] in ('1','2','6')):
+            return True
+
+    return False
+
+def get_stock_quote_derivative(code):
+
+    isCBBC = False
+    if (code[0] == '6'):
+        isCBBC = True
 
     url = "http://www.aastocks.com/en/mobile/Quote.aspx?symbol=" + code
 
@@ -233,6 +250,82 @@ def get_stock_quote(code):
 
     quote_result["CodeName"] = (soup.find("td", {"class": "quote_table_header_text"}).text)
 
+    div_last = soup.find("div", {"class": "text_last"})
+
+    quote_result["Close"] = (div_last.text.strip().replace(",",""))
+
+    td_last = soup.find("td", {"class": "cell_last"})
+    quote_result["ChangeVal"] = (td_last.find_all("div")[2].find_all("span")[0].text)
+    quote_result["ChangePercent"] = (td_last.find_all("div")[2].find_all("span")[1].text)
+
+    if ("+" in quote_result["ChangeVal"]):
+        quote_result["Direction"] = "UP"
+    elif ("-" in quote_result["ChangeVal"]):
+        quote_result["Direction"] = "DOWN"
+    else:
+        quote_result["Direction"] = "NONE"
+
+    quote_result["Range"] = (td_last.find_all("div")[3].text.strip())
+
+    td_last = soup.find("td", {"class": "cell_last_height"})
+    quote_result["Open"] = (td_last.find_all("td")[2].find("span").text)
+    quote_result["Volume"] = (td_last.find_all("td")[3].find("span").text)
+    quote_result["Turnover"] = (td_last.find_all("td")[4].find("span").text)
+
+    div_content = soup.find("div", {"id": "ctl00_cphContent_pQuoteDetail"})
+    quote_result["LastUpdate"] = (div_content.find("font", {"class": "font12_white"}).text)
+
+    rows = div_content.find_all("table")[0].find_all("tr", recursive=False)
+
+    quote_result[("SpotVsCall" if isCBBC else "ImpVol")] = (rows[2].find_all("td")[0].find("span").text)
+    quote_result["Premium"] = (rows[2].find_all("td")[1].find("span").text)
+    quote_result["RemainingDays"] = (rows[3].find_all("td")[0].find("span").text)
+    quote_result["EffGearing"] = (rows[3].find_all("td")[1].find("span").text)
+    quote_result["OutStanding"] = (rows[4].find_all("td")[0].find("span").text)
+    quote_result[("CallPrice" if isCBBC else "Delta")] = (rows[4].find_all("td")[1].find("span").text)
+    quote_result["LotSize"] = (rows[5].find_all("td")[0].find("span").text)
+    quote_result["Strike"] = (rows[5].find_all("td")[1].find("span").text)
+
+    div52 = soup.find("div", {"id": "ctl00_cphContent_pWarrant"})
+    
+    quote_result["Moneyness"] = div52.find("span", {"class": "moneybar"}).text.strip()
+    
+    if div52.find("a"):
+        quote_result["Underlying"] = "/qd" + div52.find("a").text.strip()
+    else:
+        quote_result["Underlying"] = div52.findAll("span", {"class", "float_right"})[1].text.strip()
+ 
+    return quote_result
+
+def get_stock_quote(code):
+
+    if(is_derivative(code)):
+        return get_stock_quote_derivative(code)
+
+    url = "http://www.aastocks.com/en/mobile/Quote.aspx?symbol=" + code
+
+    #print("URL: [" + url + "]")
+    
+    quote_result = {}
+
+    headers = {'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/39.0.2171.95 Safari/537.36'}
+
+    r = requests.get(url, headers=headers)
+    html = r.text 
+    #print(html)
+    soup = BeautifulSoup(html, "html.parser")
+    
+    # if no close result, just return empty
+    if (not soup.find("td", {"class": "quote_table_header_text"}).text.strip()):
+        return quote_result
+
+    quote_result["CodeName"] = (soup.find("td", {"class": "quote_table_header_text"}).text)
+
+    # replace with cname if available
+    cname = stock_db.get_stock_name(code)
+    if cname:
+        quote_result["CodeName"] = quote_result["CodeName"] + '\n' + cname 
+ 
     div_last = soup.find("div", {"class": "text_last"})
 
     quote_result["Close"] = (div_last.text.strip().replace(",",""))
@@ -298,13 +391,19 @@ def get_quote_message(code, region="HK", simpleMode=True):
 
     locale.setlocale( locale.LC_ALL, '' )
     passage = ""
+    isGoogle = True
     
     if (region == "HK"):
-        quote_result = get_stock_quote(code)
+        quote_result = m18_stock_quote.get_hk_stock_quote(code)
+        quote_result["CompanyProfile"] = "/qS" + code
     elif (region == "CN"):
         quote_result = get_cn_stock_quote(code)
     elif (region == "US"):
-        quote_result = get_us_stock_quote(code)
+        try:
+            quote_result = google_stock_quote.get_us_stock_quote(code)
+        except:
+            quote_result = get_us_stock_quote(code)
+            isGoogle = False
     
     #print(quote_result)
     if (not quote_result):
@@ -318,8 +417,8 @@ def get_quote_message(code, region="HK", simpleMode=True):
         elif (quote_result["Direction"] == "DOWN"):
             direction = u'\U0001F53B'
 
-        passage = "<b>" + quote_result["CodeName"] + "</b>" + EL
-        passage = passage + direction + "" + locale.currency(float(quote_result["Close"])) + " (" + quote_result["ChangeVal"] + "/" + quote_result["ChangePercent"] + ")" + EL
+        passage = "<b>" + quote_result["CodeName"] + "</b>" + " (" + code + ")" + EL
+        passage = passage + direction + "" + "$%.3f" % float(quote_result["Close"]) + " (" + quote_result["ChangeVal"] + "/" + quote_result["ChangePercent"] + ")" + EL
         passage = passage + quote_result["Range"] + " (" + quote_result["Volume"] + "/" + quote_result["Turnover"] + ")"+ EL
 
         icon_v2v = ""
@@ -329,19 +428,26 @@ def get_quote_message(code, region="HK", simpleMode=True):
             elif (float(quote_result["V2V"]) > 1.0):
                  icon_v2v = u'\U0001F424'
             passage = passage + icon_v2v +  "V/AV " + "x" + quote_result["V2V"] + EL
-       
-        if (not quote_result["52WeekHigh"] == "N/A" and not quote_result["52WeekLow"] == "N/A"):
-            if (float(quote_result["Close"])) > float(quote_result["52WeekHigh"].replace(",","")):
-                passage = passage + u'\U0001F525' + "<i>52 Week High</i>" + EL
-            elif (float(quote_result["Close"])) < float(quote_result["52WeekLow"].replace(",","")):
-                passage = passage + u'\U00002744' + "<i>52 Week Low</i>" + EL 
+      
+        if ("52WeekHigh" in quote_result and "52WeekLow" in quote_result): 
+            if (not quote_result["52WeekHigh"] == "N/A" and not quote_result["52WeekLow"] == "N/A"):
+                if (region == "US" and isGoogle):
+                    if (float(quote_result["Range"].split("-")[1])) >= float(quote_result["52WeekHigh"].replace(",","")):
+                        passage = passage + u'\U0001F525' + "<i>52 Week High</i>" + EL
+                    elif (float(quote_result["Range"].split("-")[1])) <= float(quote_result["52WeekLow"].replace(",","")):
+                        passage = passage + u'\U00002744' + "<i>52 Week Low</i>" + EL 
+                else:
+                    if (float(quote_result["Close"])) > float(quote_result["52WeekHigh"].replace(",","")):
+                        passage = passage + u'\U0001F525' + "<i>52 Week High</i>" + EL
+                    elif (float(quote_result["Close"])) < float(quote_result["52WeekLow"].replace(",","")):
+                        passage = passage + u'\U00002744' + "<i>52 Week Low</i>" + EL 
         
         if (simpleMode):
             return passage     
 
         passage = passage + EL 
 
-        attrs = ["Open", "PrevClose", "LotSize", "PE", "Yield", "DivRatio", "EPS", "MktCap", "NAV", "52WeekHigh", "52WeekLow", "Exchange", "LastUpdate"]
+        attrs = ["Open", "PrevClose", "LotSize", "PE", "Yield", "DivRatio", "EPS", "MktCap", "NAV", "52WeekHigh", "52WeekLow", "Exchange", "ImpVol", "RemainingDays", "Strike", "CallPrice", "SpotVsCall", "EffGearing", "Delta", "Premium", "OutStanding", "Moneyness", "Underlying", "Expiry", "ConversionRatio", "CompanyProfile", "RelatedStock", "RelatedSZStock", "Shares", "Beta", "LastUpdate"]
 
         for attr in attrs:
             passage = passage + constructPassageAttributes(attr, quote_result)
@@ -350,25 +456,27 @@ def get_quote_message(code, region="HK", simpleMode=True):
 
 def constructPassageAttributes(key, qDict):
 
-    if (key in qDict):
-        return key + ": " + qDict[key] + EL
+    if (key in qDict and not str(qDict[key]) == ""):
+        return key + ": " + str(qDict[key]) + EL
     else:
         return ""
 
 def main():
 
-    #quote = get_stock_quote('3054')
+    quote = get_us_stock_quote('HEES')
     #quote = get_cn_stock_quote('000001')
     #quote = get_stock_quote('3054')
-    #for key, value in quote.items():
-    #    print(key, ":", value)
-
-    print(get_quote_message('2840', "HK", False))
+    for key, value in quote.items():
+        print(key, ":", value)
+    #print(get_stock_quote_derivative('28497'))
+    #print(get_stock_quote_derivative('60002'))
+    #print(get_quote_message('28497', "HK", False))
+    #print(get_quote_message('60002', "HK", False))
     #print(get_quote_message('000001',"CN", False))
  
-    #print(get_quote_message('JPM',"US", False))
-    #print(get_quote_message('MSFT',"US", False))
-    #print(get_quote_message('AMZN',"US", False))
+    print(get_quote_message('136',"HK", False))
+    print(get_quote_message('MSFT',"US", False))
+    print(get_quote_message('AMZN',"US", False))
 
 if __name__ == "__main__":
     main()                

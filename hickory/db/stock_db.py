@@ -59,6 +59,32 @@ def manage_stock(cat, code, name, industryLv1, industryLv2, industryLv3, lotSize
         conn.close()
         return True
 
+def get_stock_industry(code):
+
+    conn = sqlite3.connect(DB_FILE)
+    ind = None
+    code = code.zfill(5)
+
+    t = (code,)
+    for row in conn.execute("SELECT INDUSTRY_LV3 FROM STOCKS WHERE CODE=?", t):
+        ind = row[0]
+    
+    conn.close()
+    return ind 
+
+def get_stock_name(code):
+
+    conn = sqlite3.connect(DB_FILE)
+    name = None
+    code = code.zfill(5)
+
+    t = (code,)
+    for row in conn.execute("SELECT NAME FROM STOCKS WHERE CODE=?", t):
+        name = row[0]
+    
+    conn.close()
+    return name 
+
 def remove_stock(code):
 
     conn = sqlite3.connect(DB_FILE)
@@ -85,7 +111,9 @@ def main(args):
     #remove_tracker('20170713', '823', 'D')
     #list_stocks()
     #remove_stock('1357')
-    list_stocks()
+    #list_stocks()
+    print(get_stock_name('0087001'))
+    print(get_stock_name('3054'))
  
 if __name__ == "__main__":
     main(sys.argv[1:])        

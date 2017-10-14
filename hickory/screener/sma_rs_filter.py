@@ -12,6 +12,7 @@ import time
 
 from hickory.util import config_loader, stock_util, mem_util
 from hickory.crawler.aastocks import stock_quote, stock_info
+from hickory.crawler.money18 import stock_quote as m18_stock_quote
 from hickory.db import stock_tech_db, stock_sector_db, stock_mag8_db
 from hickory.report import sector_heatmap, y8_report, v8_report
 
@@ -54,7 +55,9 @@ def generate_TECH_MT(num_workers=1):
         for future in concurrent.futures.as_completed(future_to_manage):
             row = future_to_manage[future]
             try:
-                data = future.result()
+                data = future.result(timeout=10)
+            except concurrent.futures.TimeoutError:
+                print('%r took too long to run' % (code))
             except Exception as exc:
                 print('%r generated an exception: %s' % (row["code"], exc))
             else:
@@ -63,7 +66,7 @@ def generate_TECH_MT(num_workers=1):
 
 def manageStockVol(code):
     
-    st = stock_quote.get_stock_quote(code)
+    st = m18_stock_quote.get_hk_stock_quote(code)
     print(code + " - " + st["Close"] + "/" + st["ChangePercent"] + "/" +  st["Volume"])
     result = stock_tech_db.update_stock_vol(code, st["Close"], st["ChangePercent"], stock_util.rf(st["Volume"]))
     return result
@@ -81,7 +84,9 @@ def generate_VOL_MT(stocks, num_workers=1):
         for future in concurrent.futures.as_completed(future_to_manage):
             code = future_to_manage[future]
             try:
-                data = future.result()
+                data = future.result(timeout=10)
+            except concurrent.futures.TimeoutError:
+                print('%r took too long to run' % (code))
             except Exception as exc:
                 print('%r generated an exception: %s' % (code, exc))
             else:
@@ -90,25 +95,25 @@ def generate_VOL_MT(stocks, num_workers=1):
 
 def main(args):
 
-    mem_util.set_max_mem(50)
+    mem_util.set_max_mem(40)
     start_time = time.time()
-    NO_OF_WORKER = 5
+    NO_OF_WORKER = 4 
 
     if (len(args) > 1 and args[1] == "gen_tech"):
         generate_TECH_MT(NO_OF_WORKER)
-    elif (len(args) > 1 and args[1] == "gen_vol"):
-        #for period in ["1m", "3m", "1y"]:
-        generate_VOL_MT(stock_sector_db.get_hot_stocks_code("ALL"), NO_OF_WORKER-1)
-        sector_heatmap.generate() 
+    elif (len(args) > 1 and args[1] == "gen_y8_vol"):
         generate_VOL_MT(stock_mag8_db.get_mag8_stocks_list(), NO_OF_WORKER-1)
         y8_report.generate()    
+    elif (len(args) > 1 and args[1] == "gen_vol"):
+        generate_VOL_MT(stock_sector_db.get_hot_stocks_code("ALL"), NO_OF_WORKER-1)
+        sector_heatmap.generate() 
     elif (len(args) > 1 and args[1] == "gen_all_vol"):
         generate_VOL_MT(stock_tech_db.get_all_stocks_code(), NO_OF_WORKER-1)
         v8_report.generate()
     else:
-        print("OPTS: gen_tech | gen_vol | gen_all_vol")
-        print(manageStockTech("191"))
-        print(manageStockVol("191"))
+        print("OPTS: gen_tech | gen_vol | gen_y8_vol | gen_all_vol")
+        print(manageStockTech("00923"))
+        #print(manageStockVol("612"))
 
     #generate()
     print("Time elapsed: " + "%.3f" % (time.time() - start_time) + "s")

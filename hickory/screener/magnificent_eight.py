@@ -12,12 +12,13 @@ import locale
 import concurrent.futures
 import time
 from datetime import tzinfo, timedelta, datetime
-from hickory.util import config_loader, stock_util
+from hickory.util import config_loader, stock_util, mem_util
 from hickory.indicator import gwc
 from hickory.data import webdata
 from hickory.crawler.aastocks import stock_quote, stock_info
 from hickory.db import stock_tech_db, stock_sector_db
 from hickory.report import y8_report
+import random
 
 config = config_loader.load()
 
@@ -36,9 +37,10 @@ def manageStockInd(code):
         ycode = ycode.rjust(4, '0') + ".HK"
    
     end = datetime.today()
-    start = end - timedelta(days=(1*365))
+    randays = random.randint(1,20)
+    start = end - timedelta(days=(1*400 + randays))
     bars = webdata.DataReader(ycode, "yahoo_direct", start, end)
-    #print(bars)
+    #print("start: " + str(start) + ", " + "end: " + str(end))
     signals = pd.DataFrame(index=bars.index)
     pd.options.mode.chained_assignment = None  # default='warn'
 
@@ -46,22 +48,36 @@ def manageStockInd(code):
     #bars['Volume'] = bars['Volume'].replace('null', 0)
     #signals['vol'] = bars['Volume']
     #signals['turnover'] = bars['Close'] * bars['Volume'].astype(float)
-
+    #mean_turnover = signals['turnover'].mean()
+ 
     col = "Close"
     signals['sma30'] = gwc.SMA(bars, col, 30)
     signals['sma100'] = gwc.SMA(bars, col, 100)
     signals['sma150'] = gwc.SMA(bars, col, 150)
     signals['sma200'] = gwc.SMA(bars, col, 200)
+    
+    # calculate ROC
+    firstclose = bars.iloc[0]['Close']
+    lastclose = bars.iloc[-1]['Close']
+    lb = len(bars)
 
-    #mean_turnover = signals['turnover'].mean()
-    print(len(bars))
-    print(len(signals))
+    _3mclose = bars.iloc[lb-63]['Close'] if lb > 63 else firstclose
+    _6mclose = bars.iloc[lb-126]['Close'] if lb > 126 else firstclose
+    _9mclose = bars.iloc[lb-189]['Close'] if lb > 189 else firstclose
+    _12mclose = bars.iloc[lb-252]['Close'] if lb > 252 else firstclose
+    print(code + "-" + str(lastclose))
+    print(code + "-" + str(lastclose/_3mclose), str(lastclose/_6mclose), str(lastclose/_9mclose), str(lastclose/_12mclose))
+
+    roc_mark = (2*(lastclose/_3mclose)) + (lastclose/_6mclose) + (lastclose/_9mclose) + (lastclose/_12mclose)
+    
+    #print(len(bars))
+    #print(len(signals))
     #print(signals.head(50))  
     df = signals.tail(1)
     di = df.iloc[0]
-    f = "%.2f"
-    st = (code, f % di['sma30'], f % di['sma100'], f % di['sma150'], f % di['sma200'])
-    print(st)
+    f = "%.4f"
+    st = (code, f % di['sma30'], f % di['sma100'], f % di['sma150'], f % di['sma200'], _3mclose, _6mclose, _9mclose, _12mclose, roc_mark)
+    #print(st)
     
     result = stock_tech_db.manage_stock_tech(st, True)
     #result = True
@@ -92,6 +108,7 @@ def generate_IND_MT(num_workers=1):
 
 def main(args):
 
+    mem_util.set_max_mem(50)
     start_time = time.time()
     NO_OF_WORKER = 3 
 
@@ -102,7 +119,8 @@ def main(args):
         y8_report.generate()    
     else:
         print("OPTS: gen_ind")
-        print(manageStockInd("00932"))
+        for stock in ("00612", "01918", "00581"):
+            print(manageStockInd(stock))
 
     print("Time elapsed: " + "%.3f" % (time.time() - start_time) + "s")
 

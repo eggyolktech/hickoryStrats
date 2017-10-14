@@ -8,11 +8,17 @@ from hickory.crawler.aastocks import stock_quote
 
 #from market_watch.db import 
 
-def sync_equ_list():
+def sync_equ_list(cat="EQU"):
 
-    # Type 1. equities list
-    url = "http://www.hkex.com.hk/chi/market/sec_tradinfo/stockcode/eisdeqty_c.htm"
-
+    if (cat == "EQU"):
+        url = "http://www.hkex.com.hk/chi/market/sec_tradinfo/stockcode/eisdeqty_c.htm"
+    elif (cat == "HDRS"):
+        url = "http://www.hkex.com.hk/chi/market/sec_tradinfo/stockcode/eisdhdr_c.htm"
+    elif (cat == "INVC"):
+        url = "http://www.hkex.com.hk/chi/market/sec_tradinfo/stockcode/eisdic_c.htm"
+    elif (cat == "GEMS"):
+        url = "http://www.hkex.com.hk/chi/market/sec_tradinfo/stockcode/eisdgems_c.htm"
+ 
     print("URL: [" + url + "]")
 
     headers = {'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/39.0.2171.95 Safari/537.36'}
@@ -83,11 +89,14 @@ def sync_equ_list():
 
 def sync_nonequ_list(cat):
 
-    # Type 1. equities list
     if (cat == "ETF"):
         url = "http://www.hkex.com.hk/chi/market/sec_tradinfo/stockcode/eisdetf_c.htm"
     elif (cat == "REIT"):
         url = "http://www.hkex.com.hk/chi/market/sec_tradinfo/stockcode/eisdreit_c.htm"
+    elif (cat == "INVP"):
+        url = "http://www.hkex.com.hk/chi/market/sec_tradinfo/stockcode/liproducts_c.htm"
+    elif (cat == "TRUST"):
+        url = "http://www.hkex.com.hk/chi/market/sec_tradinfo/stockcode/eisdtrus_c.htm"
     else:
         return
 
@@ -125,7 +134,7 @@ def sync_nonequ_list(cat):
             r_dtl.encoding = "big5-hkscs"
             html_dtl = r_dtl.text
             soup_dtl = BeautifulSoup(html_dtl, "html5lib")
-           
+            
             table_dtl = soup_dtl.findAll("table")[5]
             #print(table_dtl)   
             _indLv1 = _cat
@@ -153,12 +162,17 @@ def sync_nonequ_list(cat):
 
 def main():
 
-    stock_db.init()
+    #stock_db.init()
 
     sync_equ_list()
     sync_nonequ_list("ETF")
     sync_nonequ_list("REIT")
 
+    sync_nonequ_list("INVP")
+    sync_nonequ_list("TRUST")
+    sync_equ_list("HDRS")
+    sync_equ_list("INVC")
+    sync_equ_list("GEMS")
  
 if __name__ == "__main__":
     main()                

@@ -12,7 +12,7 @@ from bs4 import BeautifulSoup
 from hickory.util import config_loader, stock_util as su
 from hickory.crawler.aastocks import stock_quote, stock_info
 from hickory.crawler.credit_suisse import stockconnect_flow
-from hickory.db import stock_sector_db, stock_mag8_db
+from hickory.db import stock_us_sector_db, stock_us_mag8_db
 
 config = config_loader.load()
 period = "ALL"
@@ -56,11 +56,8 @@ def generate():
     locale.setlocale(locale.LC_ALL, '')
     now = datetime.datetime.now()
     
-    industries = stock_sector_db.get_hot_industries(period)
-    y8_dict = stock_mag8_db.get_mag8_stocks_dict(100)
-    dicts = stockconnect_flow.get_stock_connect_top_dict()
-    inflow_dict = dicts[0]
-    outflow_dict = dicts[1]
+    industries = stock_us_sector_db.get_hot_industries(period)
+    y8_dict = stock_us_mag8_db.get_mag8_stocks_dict(100)
 
     html = """<html>
     <head>
@@ -139,7 +136,7 @@ def generate():
                 
                 # if industry found
                 if (i*4 + j < len(industries)):
-                    stocks = stock_sector_db.get_hot_stocks_by_industry(industries[i*4 + j], period)
+                    stocks = stock_us_sector_db.get_hot_stocks_by_industry(industries[i*4 + j], period)
                     html = html + ("""<h6><b><a href="#" onclick="on('%s')">%s</a></b> (%s)</h6>""" % (industries[i*4 + j], industries[i*4 + j], len(stocks)))
 
                     # get industry stock list
@@ -147,7 +144,7 @@ def generate():
                     stk_overlay_html = """<table class="table bg-info table-condensed">
                                     <tr>
                                         <th>Code</th><th>Name</th><th>LC</th><th>LPC</th>
-                                        <th>V/AV</th><th>NAV</th><th>PE</th><th>YIELD</th>
+                                        <th>V/AV</th><th>PE</th><th>YIELD</th>
                                         <th>1mΔ%</th><th>3mΔ%</th><th>1yΔ%</th><th>1mRS%</th>
                                         <th>3mRS%</th><th>1yRS%</th><th>MktCap</th><th>52WkH</th>
                                         <th>52WkLow</th><th>1mVol</th><th>3mVol</th><th>ma10</th>
@@ -187,18 +184,13 @@ def generate():
 
                         #if (not stock["Y8_ENTRY_DATE"] == None):
                         if (stock["code"] in y8_dict):
-                            img_sup_2 = "&nbsp;<a href='./y8.html#%s' target='_blank' title='%s'><img src='./images/ycon.png' width='15' style='vertical-align: top' /></a>" % (stock["code"], y8_dict[stock["code"]])
+                            img_sup_2 = "&nbsp;<a href='./y8_us.html#%s' target='_blank' title='%s'><img src='./images/ycon.png' width='15' style='vertical-align: top' /></a>" % (stock["code"], y8_dict[stock["code"]])
                         else:
                             img_sup_2 = ""
 
-                        if (stock["code"] in inflow_dict):
-                            img_sup_3 = "&nbsp;<a href='#' target='_blank' title='%s'><img src='./images/inflow.png' width='15' style='vertical-align: top' /></a>" % (inflow_dict[stock["code"]])
-                        elif (stock["code"] in outflow_dict):
-                            img_sup_3 = "&nbsp;<a href='#' target='_blank' title='%s'><img src='./images/outflow.png' width='15' style='vertical-align: top' /></a>" % (outflow_dict[stock["code"]])
-                        else:
-                            img_sup_3 = ""
+                        img_sup_3 = ""
  
-                        name_text = "<a href='http://aastocks.com/tc/stocks/analysis/company-fundamental/?symbol=" + stock["code"] + "' target='_blank'>" + stock["name"] + "</a>" + img_sup + img_sup_2 + img_sup_3
+                        name_text = "<a href='https://finance.google.com/finance?q=" + stock["code"] + "' target='_blank'>" + stock["name"] + "</a>" + img_sup + img_sup_2 + img_sup_3
                         row_text = """<tr style='""" + style_bg + """'>
                                         <td><a href="/streaming.html?code=%s" target="_blank">%s</a></td>
                                         <td>%s</td><td>%s</td>
@@ -210,12 +202,12 @@ def generate():
                         row_text_overlay = """<tr style='""" + style_bg + """'>
                                         <td><a href="/streaming.html?code=%s" target="_blank">%s</a></td>
                                         <td class='text-nowrap'>%s</td><td>%s</td><td>%s</td>
+                                        <td>%s</td><td>%s</td><td>%s</td>
                                         <td>%s</td><td>%s</td><td>%s</td><td>%s</td>
                                         <td>%s</td><td>%s</td><td>%s</td><td>%s</td>
                                         <td>%s</td><td>%s</td><td>%s</td><td>%s</td>
                                         <td>%s</td><td>%s</td><td>%s</td><td>%s</td>
-                                        <td>%s</td><td>%s</td><td>%s</td><td>%s</td>
-                                        </tr>""" % (stock["code"], stock["code"],  stock["name"], stock["LAST_CLOSE"], fpct(lcp), vol_ratio, stock["NAV"], stock["PE"], stock["YIELD"], fnum(stock["_1MONTH_CHANGE"]), fnum(stock["_3MONTH_CHANGE"]), fnum(stock["_52WEEK_CHANGE"]), fnum(stock["_1MONTH_HSI_RELATIVE"]), fnum(stock["_3MONTH_HSI_RELATIVE"]), fnum(stock["_52WEEK_HSI_RELATIVE"]), su.rf2s(stock["MARKET_CAPITAL"]), stock["_52WEEK_HIGH"], stock["_52WEEK_LOW"], su.rf2s(stock["_1MONTH_AVG_VOL"]), su.rf2s(stock["_3MONTH_AVG_VOL"]), stock["_10_DAY_MA"], stock["_50_DAY_MA"], stock["_90_DAY_MA"], stock["_250_DAY_MA"], stock["_14_DAY_RSI"])
+                                        </tr>""" % (stock["code"], stock["code"],  stock["name"], stock["LAST_CLOSE"], fpct(lcp), vol_ratio, stock["PE"], stock["YIELD"], fnum(stock["_1MONTH_CHANGE"]), fnum(stock["_3MONTH_CHANGE"]), fnum(stock["_52WEEK_CHANGE"]), fnum(stock["_1MONTH_HSI_RELATIVE"]), fnum(stock["_3MONTH_HSI_RELATIVE"]), fnum(stock["_52WEEK_HSI_RELATIVE"]), su.rf2s(stock["MARKET_CAPITAL"]), stock["_52WEEK_HIGH"], stock["_52WEEK_LOW"], su.rf2s(stock["_1MONTH_AVG_VOL"]), su.rf2s(stock["_3MONTH_AVG_VOL"]), fnum(stock["_10_DAY_MA"]), fnum(stock["_50_DAY_MA"]), fnum(stock["_90_DAY_MA"]), fnum(stock["_250_DAY_MA"]), stock["_14_DAY_RSI"])
 
                         stk_overlay_html = stk_overlay_html + row_text_overlay
  
@@ -235,7 +227,7 @@ def generate():
     #print(html)
     soup = BeautifulSoup(html, "html.parser")
 
-    text_file = open("/var/www/eggyolk.tech/html/heatmap.html", "w")
+    text_file = open("/var/www/eggyolk.tech/html/heatmap_us.html", "w")
     text_file.write(soup.prettify())
     text_file.close()
 

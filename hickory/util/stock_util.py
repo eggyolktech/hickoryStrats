@@ -7,6 +7,13 @@ def is_number(s):
     except ValueError:
         return False
 
+def is_float(s):
+    try:
+        float(s)
+        return True
+    except ValueError:
+        return False
+
 def rf(text):
 
     if (text == "-"):
@@ -29,11 +36,10 @@ def rfNum(number, numDecimal):
         return number
 
 def rf2s(number):
-
-    if (number and is_number(number)):
+    if (number and (is_number(number) or is_float(number))):
 
         length = len(str(number).split(".")[0])
-
+        #print(length)
         if (length >= 10):
             return ("%.2f" % (number/1000000000) + "B")
         elif (length >= 7):

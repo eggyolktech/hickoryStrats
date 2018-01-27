@@ -17,6 +17,15 @@ TAG_RE = re.compile(r'<[^>]+>')
 def remove_tags(text):
     return TAG_RE.sub('', text)
 
+def is_52weekhigh(code):
+
+    quote_result = get_stock_quote(code)
+
+    if (float(quote_result["Close"])) > float(quote_result["52WeekHigh"].replace(",","")):
+        return True
+    else:
+        return False
+
 def get_cn_stock_quote(code):
 
     url = "http://www.aastocks.com/en/cnhk/quote/detail-quote.aspx?shsymbol=" + code
@@ -400,7 +409,10 @@ def get_quote_message(code, region="HK", simpleMode=True):
         quote_result = get_cn_stock_quote(code)
     elif (region == "US"):
         try:
-            quote_result = google_stock_quote.get_us_stock_quote(code)
+            if (code.upper() in google_stock_quote.DICT_CURRENCY):
+                return google_stock_quote.get_fx_quote_message(code)
+            else:
+                quote_result = google_stock_quote.get_us_stock_quote(code)
         except:
             quote_result = get_us_stock_quote(code)
             isGoogle = False
@@ -432,9 +444,12 @@ def get_quote_message(code, region="HK", simpleMode=True):
         if ("52WeekHigh" in quote_result and "52WeekLow" in quote_result): 
             if (not quote_result["52WeekHigh"] == "N/A" and not quote_result["52WeekLow"] == "N/A"):
                 if (region == "US" and isGoogle):
-                    if (float(quote_result["Range"].split("-")[1])) >= float(quote_result["52WeekHigh"].replace(",","")):
+                    #print(quote_result["Range"])
+                    if (quote_result["Range"].strip() == "-"):
+                        print("Range is empty")
+                    elif (float(quote_result["Range"].split("-")[1].replace(",",""))) >= float(quote_result["52WeekHigh"].replace(",","")):
                         passage = passage + u'\U0001F525' + "<i>52 Week High</i>" + EL
-                    elif (float(quote_result["Range"].split("-")[1])) <= float(quote_result["52WeekLow"].replace(",","")):
+                    elif (float(quote_result["Range"].split("-")[1].replace(",",""))) <= float(quote_result["52WeekLow"].replace(",","")):
                         passage = passage + u'\U00002744' + "<i>52 Week Low</i>" + EL 
                 else:
                     if (float(quote_result["Close"])) > float(quote_result["52WeekHigh"].replace(",","")):
@@ -463,20 +478,24 @@ def constructPassageAttributes(key, qDict):
 
 def main():
 
-    quote = get_us_stock_quote('HEES')
+    #quote = get_us_stock_quote('HEES')
     #quote = get_cn_stock_quote('000001')
     #quote = get_stock_quote('3054')
-    for key, value in quote.items():
-        print(key, ":", value)
+    #for key, value in quote.items():
+    #    print(key, ":", value)
     #print(get_stock_quote_derivative('28497'))
     #print(get_stock_quote_derivative('60002'))
     #print(get_quote_message('28497', "HK", False))
     #print(get_quote_message('60002', "HK", False))
     #print(get_quote_message('000001',"CN", False))
  
-    print(get_quote_message('136',"HK", False))
+    #print(get_quote_message('136',"HK", False))
     print(get_quote_message('MSFT',"US", False))
-    print(get_quote_message('AMZN',"US", False))
+    #print(get_quote_message('BTC',"US", False))
+
+    #print(is_52weekhigh('1316'))
+    #print(is_52weekhigh('1'))
+    #print(is_52weekhigh('87001'))
 
 if __name__ == "__main__":
     main()                

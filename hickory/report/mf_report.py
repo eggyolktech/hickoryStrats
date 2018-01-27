@@ -12,12 +12,16 @@ from datetime import timedelta
 from bs4 import BeautifulSoup
 from hickory.util import config_loader, stock_util as su
 from hickory.crawler.aastocks import stock_quote, stock_info
-from hickory.db import stock_mag8_db, stock_us_mag8_db
+from hickory.db import stock_mf_db
+from hickory.crawler.hkex import mutual_market 
 
 config = config_loader.load()
 period = "ALL"
 
 def fdaysago(dateStr):
+    
+    if (not dateStr):
+        return "None"
 
     then = datetime.datetime.strptime(dateStr, "%Y%m%d").date()
     #then = datetime.datetime.combine(mydate, datetime.time.min)
@@ -63,27 +67,17 @@ def fnum(number, numdigit="2"):
 
     return number
 
-def generate(region="HK"):
+def generate():
 
     locale.setlocale(locale.LC_ALL, '')
     now = datetime.datetime.now()
     
-    if (region=="US"):
-        stock_us_mag8_db.update_mag8_stocks_entry()    
-        stocks = stock_us_mag8_db.get_mag8_stocks()
-        #stocks_dict = stock_us_mag8_db.get_mag8_stocks_dict(100)
-        #print(stocks)
-        #print(stocks_dict)
-
-    else:
-        stock_mag8_db.update_mag8_stocks_entry()    
-        stocks = stock_mag8_db.get_mag8_stocks()
-        #stocks_dict = stock_mag8_db.get_mag8_stocks_dict(100)
+    stocks = stock_mf_db.get_mf_stocks()
 
     html = """<html>
     <head>
         <meta charset="UTF-8">
-        <title>Gen-Y Sector Screener</title>
+        <title>Southbound Moneyflow Tracker</title>
         <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
         <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
         <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
@@ -165,10 +159,12 @@ def generate(region="HK"):
                                 } 
 
                                 if (($.text([a]).includes('M') && $.text([b]).includes('M')) 
-                                    || ($.text([a]).includes('B') && $.text([b]).includes('B'))) {
+                                    || ($.text([a]).includes('B') && $.text([b]).includes('B'))
+                                    || ($.text([a]).includes('%') && $.text([b]).includes('%'))) {
                                 
                                     ta = $.text([a]).replace("M", "").replace("B", "").replace("None", "0").replace(/^\s+|\s+$/g, '')
                                     tb = $.text([b]).replace("M", "").replace("B", "").replace("None", "0").replace(/^\s+|\s+$/g, '')
+                                    tb = $.text([b]).replace("%", "").replace(/^\s+|\s+$/g, '')
                                     //alert("[" + ta + ", " + tb + "]")
                                     return parseInt(ta) > parseInt(tb) ? 
                                         inverse ? -1 : 1
@@ -204,18 +200,18 @@ def generate(region="HK"):
     <body>"""
 
     html = html + """<div class="container-fluid">
-    <h3><img height="40" src="https://www.ytravelblog.com/wp-content/themes/ytravelblog/images/favicon.ico"/>Gen-Y Sector Screener</h3>
-    <p style="font-size: 11px">TO: 1.5m+ / MktCap: 0B+<small> (Last updated: """ + now.strftime("%Y-%m-%d %H:%M") + """)</small></p>
+    <h3><img height="40" src="http://warrants-hk.credit-suisse.com/home/img/cn_to_hk.jpg"/>Southbound Moneyflow Track</h3>
+    <p style="font-size: 11px"><small>(Last updated: """ + now.strftime("%Y-%m-%d %H:%M") + """)</small></p>
         """
     
     stk_html = """<table class="table table-striped table-bordered table-hover table-condensed">
             <tr class="flink">
                 <th id="1_header">Code</th><th id="2_header">Name</th><th id="3_header">Last Close</th>
                 <th id="4_header">V/AV</th> <th id="4a_header">RoC</th><th id="6_header">PE</th>
-                <th id="8_header">1mC%</th><th id="9_header">3mC%</th><th id="10_header">1yC%</th><th id="11_header">1mRS%</th>
+                <th id="8_header">Shs3d%</th><th id="9_header">Shs7d%</th><th id="10_header">Shs14d%</th><th id="11_header">1mRS%</th>
                 <th id="12_header">3mRS%</th><th id="13_header">1yRS%</th><th id="14_header">MktCap</th><th id="15_header">52WkLH</th>
-                <th id="17_header">3mVol</th><th id="18_header">ma30</th>
-                <th id="19_header">ma50</th><th id="20_header">ma150</th><th id="21_header">ma200</th><th id="22_header">macd Xup</th><th id="23_header">since</th>
+                <th id="17_header">3mVol</th><th id="18_header">Shs</th>
+                <th id="19_header">Shs3d</th><th id="20_header">Shs7d</th><th id="21_header">Shs14d</th><th id="22_header">MacdX</th><th id="23_header">Stake</th>
             </tr>
 
                 """
@@ -228,10 +224,7 @@ def generate(region="HK"):
             img_sup = ""
 
 
-        if (region == "US"):
-            surl = "https://finance.google.com/finance?q="
-        else:
-            surl = "http://aastocks.com/tc/stocks/analysis/company-fundamental/?symbol="
+        surl = "http://aastocks.com/tc/stocks/analysis/company-fundamental/?symbol="
 
         name_text = "<a href='" + surl + stock["CODE"] + "' target='_blank'>" + stock["stockname"] + "</a>" + img_sup
     
@@ -240,7 +233,7 @@ def generate(region="HK"):
 
         vol_ratio = "-"
         style_bg = ""
-
+        
         if(lvr):
             if (float(lvr) > 5):
                 style_bg = "background-color: yellow;"
@@ -249,9 +242,9 @@ def generate(region="HK"):
             elif (float(lvr) > 1.0):
                 style_bg = ""
                 #style_bg = "background-color: PowderBlue;"
-
-        vol_ratio = "x" + "%.1f" % (lvr)
-
+        
+            vol_ratio = "x" + "%.1f" % (lvr)
+        
         macd_text = "-"
         macd_div = stock["MACD_DIVERGENCE"]
 
@@ -264,6 +257,16 @@ def generate(region="HK"):
             macd_text = fdaysago(stock["MACD_X_OVER_DATE"]) + " (" + macd_div + ")"
         else:
             macd_text = macd_text + " (" + macd_div + ")"
+        
+        if not stock["Y8_ROC_MARK"]:
+            stock["Y8_ROC_MARK"] = 0
+
+        stockmf = mutual_market.get_moneyflow_map_by_code(stock["CODE"].zfill(5))
+        if (not '3dshsg' in stockmf):
+            print("Skipping " + stock["CODE"])
+            continue
+        else:
+            print("Printing " + stock["CODE"])
         row_text = """<tr style='""" + style_bg + """'>
                       <td><a name='%s'/><a href="/streaming.html?code=%s" target="_blank">%s</a></td>
                       <td class='text-nowrap'>%s</td><td>%s</td>
@@ -272,7 +275,7 @@ def generate(region="HK"):
                       <td>%s</td><td>%s</td><td>%s</td><td>%s</td>
                       <td>%s</td><td>%s</td><td>%s</td>
                       <td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td>
-                  </tr>""" % (stock["CODE"], stock["CODE"], stock["CODE"], name_text, str(stock["LAST_CLOSE"]) + " /" + fpct(lcp).strip(), vol_ratio, "%.2f" % stock["Y8_ROC_MARK"] ,stock["PE"], fnum(stock["_1MONTH_CHANGE"]), fnum(stock["_3MONTH_CHANGE"]), fnum(stock["_52WEEK_CHANGE"]), fnum(stock["_1MONTH_HSI_RELATIVE"]), fnum(stock["_3MONTH_HSI_RELATIVE"]), fnum(stock["_52WEEK_HSI_RELATIVE"]), su.rf2s(stock["MARKET_CAPITAL"]), str(stock["_52WEEK_LOW"]) + " - " + str(stock["_52WEEK_HIGH"]), su.rf2s(stock["_3MONTH_AVG_VOL"]), su.rfNum(stock["_30_DAY_MA"], 2), su.rfNum(stock["_50_DAY_MA"], 2), su.rfNum(stock["_150_DAY_MA"], 2), su.rfNum(stock["_200_DAY_MA"], 2), macd_text, fdaysago(stock["Y8_ENTRY_DATE"]))
+                  </tr>""" % (stock["CODE"], stock["CODE"], stock["CODE"], name_text, str(stock["LAST_CLOSE"]) + " /" + fpct(lcp).strip(), vol_ratio, "%.2f" % stock["Y8_ROC_MARK"] ,stock["PE"], fnum(stockmf["3dshsg"]), fnum(stockmf["7dshsg"]), fnum(stockmf["14dshsg"]), fnum(stock["_1MONTH_HSI_RELATIVE"]), fnum(stock["_3MONTH_HSI_RELATIVE"]), fnum(stock["_52WEEK_HSI_RELATIVE"]), su.rf2s(stock["MARKET_CAPITAL"]), str(stock["_52WEEK_LOW"]) + " - " + str(stock["_52WEEK_HIGH"]), su.rf2s(stock["_3MONTH_AVG_VOL"]), su.rf2s(stockmf["shs"]), su.rf2s(stockmf["3dshs"]), su.rf2s(stockmf["7dshs"]), su.rf2s(stockmf["14dshs"]), macd_text, stockmf["stake"])
 
         stk_html = stk_html + row_text
  
@@ -285,15 +288,7 @@ def generate(region="HK"):
     #print(html)
     soup = BeautifulSoup(html, "html.parser")
 
-    reg = ""
-    if (region == "US"):
-        reg = "_us"
-
-    text_file = open("/var/www/eggyolk.tech/html/y8%s.html" % reg, "w")
-    text_file.write(soup.prettify())
-    text_file.close()
-
-    text_file = open("/var/www/eggyolk.tech/html/sector%s.html" % reg, "w")
+    text_file = open("/var/www/eggyolk.tech/html/moneyflow.html", "w")
     text_file.write(soup.prettify())
     text_file.close()
 
@@ -301,7 +296,6 @@ def generate(region="HK"):
 def main():
     
     generate()
-    generate("US")
 
 if __name__ == "__main__":
     main() 

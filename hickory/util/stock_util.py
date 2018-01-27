@@ -53,6 +53,21 @@ def rf2s(number):
     else:
         return number
 
+def rfDeltaPercentage(new, old):
+    change = (float(new) - float(old))/float(old) * 100
+    change_val = ("%.2f" % change) + "%"
+    return rfDirection(change_val)
+
+def rfDirection(change):
+
+    if ("-" in change):
+        change = change.replace("-", u'\U0001F53B')
+    else:
+        change = u'\U0001F332' + change
+        
+    return change
+
+
 def main():
     print(rf("12,333B"))
 

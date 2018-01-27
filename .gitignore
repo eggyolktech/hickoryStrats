@@ -93,3 +93,6 @@ config.properties
 
 # interim tmp file
 .js.tmp
+
+# pickle files
+.pkl

@@ -3,6 +3,7 @@
 #from bs4 import BeautifulSoup
 import demjson
 import requests
+import time
 import locale
 import re
 from hickory.db import stock_tech_db, stock_db
@@ -16,18 +17,37 @@ TAG_RE = re.compile(r'<[^>]+>')
 def remove_tags(text):
     return TAG_RE.sub('', text)
 
+def is_52weekhigh(code):
+
+    code = code.lstrip("0")
+    #time.sleep(1.5)
+    quote_result = get_hk_stock_quote(code)
+
+    if (float(quote_result["Close"])) > float(quote_result["52WeekHigh"].replace(",","")):
+        return True
+    else:
+        return False
+    
 def get_hk_stock_quote(code):
 
     code = code.zfill(5)
     durl = "http://money18.on.cc/js/daily/hk/quote/%s_d.js" % code
     rurl = "http://money18.on.cc/js/real/quote/%s_r.js" % code
 
+    #print(durl)
+    #print(rurl)
+
     #print("Code: [" + code + "]")
     quote_result = {}
 
     headers = {'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/39.0.2171.95 Safari/537.36'}
 
-    r = requests.get(durl, headers=headers)
+    try:
+        r = requests.get(durl, headers=headers, timeout=5)
+    except requests.exceptions.Timeout:
+        # retry once more
+        r = requests.get(durl, headers=headers, timeout=5)
+
     r.encoding = "big5hkscs"
     html = r.text 
 
@@ -40,7 +60,12 @@ def get_hk_stock_quote(code):
         dd = demjson.decode(s)
         #print(dd)
 
-    r = requests.get(rurl, headers=headers)
+    try:
+        r = requests.get(rurl, headers=headers, timeout=5)
+    except requests.exceptions.Timeout:
+        # retry once more
+        r = requests.get(rurl, headers=headers, timeout=5)
+
     r.encoding = "big5hkscs"
     html = r.text
     if ("DOCTYPE" in html):
@@ -69,7 +94,7 @@ def get_hk_stock_quote(code):
 
     last_update = rd['ltt']
 
-    if l_open and l_close and not float(l_close) == 0:
+    if l_open and not l_open == "null" and l_close and not float(l_close) == 0:
         change_val_f = float(l_close) - float(l_open)
         
         if (change_val_f > 0):
@@ -233,20 +258,24 @@ def constructPassageAttributes(key, qDict):
 
 def main():
 
-    quote = get_hk_stock_quote('87001')
-    quote = get_hk_stock_quote('61383')
-    quote = get_hk_stock_quote('12200')
-    quote = get_hk_stock_quote('8366')
-    quote = get_hk_stock_quote('2822')
+    #quote = get_hk_stock_quote('87001')
+    #quote = get_hk_stock_quote('61383')
+    #quote = get_hk_stock_quote('12200')
+    #quote = get_hk_stock_quote('8366')
+    #quote = get_hk_stock_quote('2822')
 
     #quote = get_hk_stock_quote('87002')
     
     #for key, value in quote.items():
     #    print(key, ":", value)
 
-    for code in ['136', '6068', '1918', '87001','61383','12200','8366','345']:
-    #for code in ['3993']:
+    #for code in ['136', '6068', '1918', '87001','61383','12200','8366','345']:
+    for code in ['11560']:
         print(get_quote_message(code, False))
+
+
+    for code in ['6','7','8']:
+        print(is_52weekhigh(code))
 
 if __name__ == "__main__":
     main()                

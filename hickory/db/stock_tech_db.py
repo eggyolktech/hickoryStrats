@@ -199,7 +199,7 @@ def main(args):
     #remove_stock('1357')
     #list_stocks_tech()
     #print(get_stock_tech("8229"))
-    print(get_stock_tech("612"))
+    print(get_stock_tech("566"))
     #print(get_all_stocks_code())
  
 if __name__ == "__main__":

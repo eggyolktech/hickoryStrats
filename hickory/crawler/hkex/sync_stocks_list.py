@@ -54,6 +54,14 @@ def sync_equ_list(cat="EQU"):
             soup_dtl = BeautifulSoup(html_dtl, "html5lib")
            
             table_dtl = soup_dtl.findAll("table")[5]
+            nameTd = table_dtl.findAll("td", text=re.compile("證券名稱:"))
+            name = nameTd[0].parent.findAll("td")[1].text.strip()
+
+            if ("H股" in name):
+                _shsType = "H"
+            else:
+                _shsType = "N"
+
             industryTd = table_dtl.findAll("td", text=re.compile("行業分類:"))
             #print(industryTd)
             industry = industryTd[0].parent.findAll("td")[1].text.strip().split("(")[0]
@@ -84,8 +92,8 @@ def sync_equ_list(cat="EQU"):
             
             #_mktcap = (table_dtl.findAll("tr")[15].findAll("td")[1].text.strip()).split(" ")[1].replace(",","")
             
-            print(_code + " - " + _name + " - " +  _indLv3 + " - " + _lotsize + " - " + _mktcap)
-            stock_db.manage_stock(_cat, _code, _name, _indLv1, _indLv2, _indLv3, _lotsize, _mktcap)
+            print(_code + " - " + _name + " - " +  _indLv3 + " - " + _lotsize + " - " + _mktcap + " - " + _shsType)
+            stock_db.manage_stock(_cat, _code, _name, _indLv1, _indLv2, _indLv3, _lotsize, _mktcap, _shsType)
 
 def sync_nonequ_list(cat):
 
@@ -165,11 +173,11 @@ def main():
     #stock_db.init()
 
     sync_equ_list()
-    sync_nonequ_list("ETF")
-    sync_nonequ_list("REIT")
+    #sync_nonequ_list("ETF")
+    #sync_nonequ_list("REIT")
 
-    sync_nonequ_list("INVP")
-    sync_nonequ_list("TRUST")
+    #sync_nonequ_list("INVP")
+    #sync_nonequ_list("TRUST")
     sync_equ_list("HDRS")
     sync_equ_list("INVC")
     sync_equ_list("GEMS")

@@ -12,6 +12,8 @@ EL = "\n"
 DEL = "\n\n"
 TAG_RE = re.compile(r'<[^>]+>')
 
+DICT_CURRENCY = {'BTC':'BTC', 'EUR':'EUR', 'GBP':'GBP', 'AUD':'AUD', 'NZD':'NZD', 'JPY':'USDJPY', 'CAD':'USDCAD', 'HKD':'USDHKD', 'CHF':'USDCHF', 'SGD':'USDSGD', 'CNY':'USDCNY', 'CNYHKD':'CNYHKD', 'EURGBP':'EURGBP','HKDJPY':'HKDJPY', 'EURHKD':'EURHKD', 'GBPHKD':'GBPHKD', 'AUDHKD':'AUDHKD'}
+
 def remove_tags(text):
     return TAG_RE.sub('', text)
 
@@ -19,6 +21,45 @@ def get_cn_stock_quote(code):
    
    quote_result = {}
    return quote_result
+
+def get_fx_quote_message(code):
+
+    code = DICT_CURRENCY[code.upper()]
+
+    url = "https://finance.google.com/finance?q=CURRENCY%3A" + code
+
+    #print("URL: [" + url + "]")
+
+    headers = {'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/39.0.2171.95 Safari/537.36'}
+
+    r = requests.get(url, headers=headers)
+    html = r.text 
+    #print(html)
+    soup = BeautifulSoup(html, "html.parser")
+    
+    divapp = soup.find("div", {"class": "appbar-snippet-primary"}) 
+    div = soup.find("div", {"id": "currency_value"})
+
+    if (not div):
+        return "No FX Quote is found for " + code
+
+    prices = div.find("span", {"class": "pr"})
+    priceschange = div.find("span", {"class": "nwp"})
+
+    time = div.find("div", {"class": "time"})
+
+    if divapp:
+        subject = divapp.text
+    else:
+        subject = code
+
+    passage = "<b>" + subject.strip() + "</b>" + DEL
+    passage = passage + prices.text.strip() + EL
+    passage = passage + priceschange.text.strip().replace("-",
+u'\U0001F53B').replace("+", u'\U0001F332') + EL
+    passage = passage + "<i>" + time.text.strip() + "</i>"
+
+    return passage
 
 def get_us_stock_quote(code):
 
@@ -70,7 +111,12 @@ def get_us_stock_quote(code):
     if (len(snap_rows[3].findAll("td")[1].text.split("/")) > 1):
         mean_vol = snap_rows[3].findAll("td")[1].text.split("/")[1]
     else:
-        mean_vol = 0
+        mean_vol = None 
+
+    if (mean_vol):
+        f_vol_now = stock_util.rf(volume)
+        f_vol_avg = stock_util.rf(mean_vol)
+        quote_result["V2V"] = "%.2f" % (float(f_vol_now) / float(f_vol_avg))
 
     l_close = l_close.replace(",","").strip('\n')
  
@@ -184,7 +230,11 @@ def get_quote_message(code, region="HK", simpleMode=True):
         quote_result = {}
         #quote_result = get_cn_stock_quote(code)
     elif (region == "US"):
-        quote_result = get_us_stock_quote(code)
+        print("Retrieveing code: " + code.upper())
+        if (code.upper() in DICT_CURRENCY):
+            return get_fx_quote_message(code)
+        else:
+            quote_result = get_us_stock_quote(code)
     
     #print(quote_result)
     if (not quote_result):
@@ -251,11 +301,17 @@ def main():
     #print(get_quote_message('60002', "HK", False))
     #print(get_quote_message('000001',"CN", False))
  
-    print(get_quote_message('DFT',"US", False))
+    #print(get_quote_message('DFT',"US", False))
     print(get_quote_message('GOOG',"US", False))
     print(get_quote_message('MSFT',"US", False))
-    print(get_quote_message('SNAP',"US", True))
+    #print(get_quote_message('SNAP',"US", True))
     #print(get_quote_message('AMZN',"US", False))
+
+    print(get_quote_message('btc',"US", False))
+    print(get_fx_quote_message("BTC"))
+    print(get_fx_quote_message("EUR"))
+    print(get_fx_quote_message("jpy"))
+
 
 if __name__ == "__main__":
     main()                

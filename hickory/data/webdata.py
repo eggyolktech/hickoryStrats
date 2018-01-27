@@ -187,11 +187,11 @@ def main():
     start = end - timedelta(days=(1*400))
 
     #bars = DataReader("0923.HK", "yahoo_direct", start, end)
-    bars = DataReader("ACTL", "yahoo_direct", start, end)
-    print(bars.tail(200))
+    #bars = DataReader("ACTL", "yahoo_direct", start, end)
+    #print(bars.tail(200))
  
-    #bars = DataReader("1353.HK", "google", start, end)
-    #print(bars.tail(20))
+    bars = DataReader("0700.HK", "google", start, end)
+    print(bars.tail(20))
  
 if __name__ == "__main__":
     main()                

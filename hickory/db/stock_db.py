@@ -21,7 +21,8 @@ def init():
        INDUSTRY_LV2       TEXT    NOT NULL,
        INDUSTRY_LV3       TEXT    NOT NULL,
        LOT_SIZE           NUMERIC,
-       MKT_CAP            NUMERIC
+       MKT_CAP            NUMERIC,
+       SHS_TYPE           VARCHAR2(1) 
        );''')
 
     print("Table created successfully")
@@ -37,7 +38,7 @@ def list_stocks():
 
     conn.close()
 
-def manage_stock(cat, code, name, industryLv1, industryLv2, industryLv3, lotSize, mktCap):
+def manage_stock(cat, code, name, industryLv1, industryLv2, industryLv3, lotSize, mktCap, shsType="N"):
 
     conn = sqlite3.connect(DB_FILE)
 
@@ -46,18 +47,31 @@ def manage_stock(cat, code, name, industryLv1, industryLv2, industryLv3, lotSize
     
     # There is record already
     if (cursor.fetchone()):
-        t = (cat, name, industryLv1, industryLv2, industryLv3, lotSize, mktCap, code)
-        conn.execute("UPDATE STOCKS SET CAT=?, NAME=?, INDUSTRY_LV1=?, INDUSTRY_LV2=?, INDUSTRY_LV3=?, LOT_SIZE=?, MKT_CAP=? WHERE CODE=?", t)
+        t = (cat, name, industryLv1, industryLv2, industryLv3, lotSize, mktCap, shsType, code)
+        conn.execute("UPDATE STOCKS SET CAT=?, NAME=?, INDUSTRY_LV1=?, INDUSTRY_LV2=?, INDUSTRY_LV3=?, LOT_SIZE=?, MKT_CAP=?, SHS_TYPE=? WHERE CODE=?", t)
         conn.commit()
         conn.close()
         return True
     # Blank new case
     else:
-        t = (cat, code, name, industryLv1, industryLv2, industryLv3, lotSize, mktCap)
-        conn.execute("INSERT INTO STOCKS (CAT, CODE, NAME, INDUSTRY_LV1, INDUSTRY_LV2, INDUSTRY_LV3, LOT_SIZE, MKT_CAP) VALUES (?, ?, ?, ?, ?, ?, ?, ?)", t)
+        t = (cat, code, name, industryLv1, industryLv2, industryLv3, lotSize, mktCap, shsType)
+        conn.execute("INSERT INTO STOCKS (CAT, CODE, NAME, INDUSTRY_LV1, INDUSTRY_LV2, INDUSTRY_LV3, LOT_SIZE, MKT_CAP, SHS_TYPE) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)", t)
         conn.commit()
         conn.close()
         return True
+
+def get_stock_shstype(code):
+
+    conn = sqlite3.connect(DB_FILE)
+    ind = None
+    code = code.zfill(5)
+
+    t = (code,)
+    for row in conn.execute("SELECT SHS_TYPE FROM STOCKS WHERE CODE=?", t):
+        ind = row[0]
+    
+    conn.close()
+    return ind 
 
 def get_stock_industry(code):
 

@@ -260,6 +260,9 @@ def generate(region="HK"):
         else:
             macd_div = "-"
 
+        if (region == "US"):
+            stock["MARKET_CAPITAL"] = 0.00
+
         if (stock["MACD_X_OVER_DATE"] and not stock["MACD_X_OVER_DATE"] == "-"):
             macd_text = fdaysago(stock["MACD_X_OVER_DATE"]) + " (" + macd_div + ")"
         else:

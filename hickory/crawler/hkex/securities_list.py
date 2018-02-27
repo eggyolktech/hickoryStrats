@@ -2,6 +2,7 @@
 
 from bs4 import BeautifulSoup
 from selenium import webdriver
+from hickory.util import stock_util
 import os
 import requests
 import json
@@ -52,12 +53,13 @@ def get_stock_json():
         if (not len(cols) == 8):
             continue
         
-        print(cols[2].text.strip() + " - " + cols[0].text.strip())
+        if (cols[2].text.strip().strip() and stock_util.is_number(cols[2].text.strip().strip())):        
+            print(cols[2].text.strip() + " - " + cols[0].text.strip())
         
-        stock_dict = {}
-        stock_dict["code"] = cols[2].text.strip()
-        stock_dict["label"] = cols[0].text.strip()
-        stock_list.append(stock_dict)
+            stock_dict = {}
+            stock_dict["code"] = cols[2].text.strip()
+            stock_dict["label"] = cols[0].text.strip()
+            stock_list.append(stock_dict)
 
     master_data_dict["code"] = "ALL_HKEX"
     master_data_dict["label"] = "ALL Securities List"
@@ -71,8 +73,11 @@ def get_stock_json():
     return json_data
 
 def main():
+    
+    with open('../../data/list_HKEXList.json', 'w') as the_file:
+        the_file.write(get_stock_json())
 
-    get_stock_json()
+    #get_stock_json()
 
  
 if __name__ == "__main__":

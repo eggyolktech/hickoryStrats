@@ -195,6 +195,42 @@ def manageInverseStockSignals(code, num_months=1):
     result.append(IsMMInverseBreakout(code, bars))
     return result
 
+def manageWeeklyStockSignals(code, num_months=1):
+
+    ycode = code.lstrip("0");
+
+    if (is_number(ycode)):
+        ycode = ycode.rjust(4, '0') + ".HK"
+   
+    end = datetime.today()
+    start = end - timedelta(days=(num_months*30))
+
+    bars = webdata.DataReader(ycode, "yahoo_direct", start, end)
+    bars['Volume'] = bars['Volume'].replace('null', 0)
+    
+    if (len(bars) == 0):
+        #print(code + " - no data found")
+        return True
+
+    #print(bars)
+    #print(bars['Close'])
+
+    #if (IsMMBreakout(bars)):
+    #    print(code + " - IsMMBreakout")
+
+    result = []
+    result.append(code)
+    result.append(IsMMBreakout(code, bars))
+    result.append(IsMMBreakoutWithPullback(code, bars, 30, 2))
+    result.append(IsMMBreakoutWithPullback(code, bars, 30, 3))
+    
+    #if (IsLowVolPullback(bars)):
+    #    print(code + " - IsLowVolPullback")
+    
+    #result = True
+    return result
+
+
 
 def manageStockSignals(code, num_months=1):
 
@@ -336,6 +372,58 @@ def generate_SIG_MT(num_workers, signalType):
                 bot_sender.broadcast(str(t2 + p2), isTest)
             if (p3):
                 bot_sender.broadcast(str(t3 + p3), isTest)
+        
+        except Exception:
+                logging.error(traceback.format_exc())
+
+def generate_WEEKLY_SIG_MT(num_workers, signalType):
+
+    conn = sqlite3.connect("/app/hickoryStrats/hickory/db/stock_db.dat")
+    conn.row_factory = sqlite3.Row
+    c = conn.cursor()
+    c.execute("select * from stocks order by code asc")
+    rows = c.fetchall()
+    isInv = False
+
+    if (signalType == "NORMAL"):
+        sigFun = manageWeeklyStockSignals
+    else:
+        sigFun = manageWeeklyStockSignals
+
+    data_list = []
+
+    # We can use a with statement to ensure threads are cleaned up promptly
+    with concurrent.futures.ThreadPoolExecutor(max_workers=num_workers) as executor:
+        # Start the load operations and mark each future with its URL
+        future_to_manage = {executor.submit(sigFun, row["code"], 4): row for row in rows[:LIMIT]}
+        
+        for future in concurrent.futures.as_completed(future_to_manage):
+            row = future_to_manage[future]
+            try:
+                data = future.result(timeout=15)
+                data_list.append(data)
+            except concurrent.futures.TimeoutError:
+                logging.error("%r took too long to run..." % (row["code"]))
+            except Exception as exc:
+                #print('%r generated an exception: %s' % (row["code"], exc))
+                logging.error(" Error retrieving code: " + row["code"])
+                #logging.error(traceback.format_exc())
+            else:
+                if (data == False):
+                    print('%r result is %s' % (row["code"], data))    
+
+        try:
+            mm = "Weekly All Time High List"
+            passage = ""
+
+            for d in data_list:
+                rcode = d[0]
+                print(rcode)
+
+            # send telegram messages
+            isTest = True
+            if (passage):
+                bot_sender.broadcast("Weekly Test", isTest)
         
         except Exception:
                 logging.error(traceback.format_exc())

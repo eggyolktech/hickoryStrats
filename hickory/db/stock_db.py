@@ -126,7 +126,7 @@ def main(args):
     #list_stocks()
     #remove_stock('1357')
     #list_stocks()
-    print(get_stock_name('0087001'))
+    print(get_stock_name('87001'))
     print(get_stock_name('3054'))
  
 if __name__ == "__main__":

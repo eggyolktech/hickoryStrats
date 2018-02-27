@@ -92,7 +92,11 @@ ENV/
 config.properties
 
 # interim tmp file
-.js.tmp
+*.js.tmp
 
 # pickle files
+*.pkl
 .pkl
+
+# db files
+

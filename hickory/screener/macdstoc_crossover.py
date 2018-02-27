@@ -34,9 +34,9 @@ from market_watch.db import stock_tracker_db
 
 EL = "\n"
 DEL = "\n\n"
-STOC_HIGHER_LIMIT = 75
-STOC_LOWER_LIMIT = 25 
-MONITOR_PERIOD = 20
+STOC_HIGHER_LIMIT = 70
+STOC_LOWER_LIMIT = 30
+MONITOR_PERIOD = 25
 MIN_TURNOVER = 3
 EXPORT_REPO = "/app/hickoryStratsWatcher/"
 
@@ -632,8 +632,15 @@ if __name__ == "__main__":
         tf = TimeFrame.WEEKLY
 
     # For retrieveing HKEX Full Stock List
-    with open('../data/list_HKEXList.json', 'w') as the_file:
-        the_file.write(securities_list.get_stock_json())
+    #slist = None
+    #try:
+    #    slist = securities_list.get_stock_json()
+    #except:
+    #    slist = securities_list.get_stock_json()
+    
+    #if (slist):
+    #    with open('../data/list_HKEXList.json', 'w') as the_file:
+    #        the_file.write(slist)
 
     jsonlist = [ 
         #'../data/list_IndustryList.json',

@@ -6,7 +6,66 @@ import requests
 from hickory.db import stock_db
 from hickory.crawler.aastocks import stock_quote
 
-#from market_watch.db import 
+import os
+from selenium import webdriver
+from selenium.webdriver.common.keys import Keys  
+from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+
+def get_hkex_equ_dtl(code):
+
+    _code = code.lstrip("0")
+
+    url = "http://www.hkex.com.hk/Market-Data/Securities-Prices/Equities/Equities-Quote?sym=%s&sc_lang=zh-hk" % _code
+
+    print("URL: [" + url + "]")
+
+    if (os.name == 'nt'):
+        chrome_options = Options()  
+        chrome_options.add_argument("--headless")  
+        chrome_options.binary_location = '/Applications/Google Chrome   Canary.app/Contents/MacOS/Google Chrome Canary'
+        browser = webdriver.Chrome(executable_path="C:\Wares\chromedriver.exe", chrome_options=chrome_options)  
+    else:
+        browser = webdriver.PhantomJS() 
+
+    browser.implicitly_wait(3) # seconds
+    browser.get(url)
+    
+    try:
+        myDynamicElement = browser.find_element_by_id("dummyid")
+    except:
+        print("dummy continue...")
+        
+    html = browser.page_source   
+    browser.quit()
+     
+    # Detect if there is any alert
+    '''try:
+        alert = browser.switch_to_alert()
+        error = alert.text
+        print("error: " + error)
+        alert.accept()
+        print("alert accepted")
+        browser.close()
+        return result
+    except:
+        print("no alert")
+    
+    html = browser.page_source    
+    browser.close()   ''' 
+    
+    soup = BeautifulSoup(html, "html.parser")
+    print(soup.find("div", {"class": "left_list_title"}))
+    _name = soup.find("div", {"class": "left_list_title"}).text   
+    
+    _cat = "CORP"
+    _indLv3 = _lotsize = _mktcap = _shsType = ""
+    
+    print(code + " - " + _name + " - " +  _indLv3 + " - " + _lotsize + " - " + _mktcap + " - " + _shsType)
+            
+   
 
 def sync_equ_list(cat="EQU"):
 
@@ -172,15 +231,16 @@ def main():
 
     #stock_db.init()
 
-    sync_equ_list()
+    #sync_equ_list()
     #sync_nonequ_list("ETF")
     #sync_nonequ_list("REIT")
 
     #sync_nonequ_list("INVP")
     #sync_nonequ_list("TRUST")
-    sync_equ_list("HDRS")
-    sync_equ_list("INVC")
-    sync_equ_list("GEMS")
+    #sync_equ_list("HDRS")
+    #sync_equ_list("INVC")
+    #sync_equ_list("GEMS")
+    get_hkex_equ_dtl("00451")
  
 if __name__ == "__main__":
     main()                

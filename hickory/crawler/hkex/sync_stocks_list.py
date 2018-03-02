@@ -4,6 +4,7 @@ from bs4 import BeautifulSoup
 import re
 import requests
 from hickory.db import stock_db
+from hickory.util import stock_util
 from hickory.crawler.aastocks import stock_quote
 
 import os
@@ -20,50 +21,63 @@ def get_hkex_equ_dtl(code):
 
     url = "http://www.hkex.com.hk/Market-Data/Securities-Prices/Equities/Equities-Quote?sym=%s&sc_lang=zh-hk" % _code
 
-    print("URL: [" + url + "]")
+    #print("URL: [" + url + "]")
 
     if (os.name == 'nt'):
-        chrome_options = Options()  
-        chrome_options.add_argument("--headless")  
-        chrome_options.binary_location = '/Applications/Google Chrome   Canary.app/Contents/MacOS/Google Chrome Canary'
-        browser = webdriver.Chrome(executable_path="C:\Wares\chromedriver.exe", chrome_options=chrome_options)  
+    
+        options = Options()  
+        options.add_experimental_option("excludeSwitches",["ignore-certificate-errors"])
+        options.add_argument('--disable-gpu')
+        options.add_argument('--headless')
+        browser = webdriver.Chrome(executable_path="C:\Wares\chromedriver.exe", chrome_options=options)  
     else:
         browser = webdriver.PhantomJS() 
 
-    browser.implicitly_wait(3) # seconds
+    browser.implicitly_wait(2) # seconds
     browser.get(url)
     
     try:
         myDynamicElement = browser.find_element_by_id("dummyid")
     except:
-        print("dummy continue...")
+        pass
         
     html = browser.page_source   
     browser.quit()
-     
-    # Detect if there is any alert
-    '''try:
-        alert = browser.switch_to_alert()
-        error = alert.text
-        print("error: " + error)
-        alert.accept()
-        print("alert accepted")
-        browser.close()
-        return result
-    except:
-        print("no alert")
-    
-    html = browser.page_source    
-    browser.close()   ''' 
-    
+        
     soup = BeautifulSoup(html, "html.parser")
-    print(soup.find("div", {"class": "left_list_title"}))
-    _name = soup.find("div", {"class": "left_list_title"}).text   
+    
+    _name = soup.find("div", {"class": "left_list_title"}).find("p", {"class": "col_name"}).text
+    _name = _name.split()[0].strip()    
+    _longname = soup.find("span", {"class": "col_longname"}).text.strip()
+    _lotsize = soup.find("dt", {"class": "col_lotsize"}).text.replace(",","").strip()
+    _industry = soup.find("span", {"class": "col_industry_hsic"}).text.strip()
+    _mktcaptxt = soup.find("dt", {"class": "col_mktcap"}).text.strip()
+    
+    if ("H股" in _longname):
+        _shsType = "H"
+    else:
+        _shsType = "N"    
     
     _cat = "CORP"
-    _indLv3 = _lotsize = _mktcap = _shsType = ""
+    _indLv1 = _industry.split("-")[0].strip()
+    _indLv2 = _industry.split("-")[1].strip()
     
-    print(code + " - " + _name + " - " +  _indLv3 + " - " + _lotsize + " - " + _mktcap + " - " + _shsType)
+    if (len(_industry.split("-")) > 2):
+        _indLv3 = _industry.split("-")[2].strip()
+    else:
+        _indLv3 = _indLv2
+
+    _mktcap = stock_util.rf(_mktcaptxt.replace("HK$","").replace("*",""))
+    _mktcap = "%.0f" % _mktcap
+            
+    ''' mktCapTd = None
+
+    print(_code + " - " + _name + " - " +  _indLv3 + " - " + _lotsize + " - " + _mktcap + " - " + _shsType)
+    stock_db.manage_stock(_cat, _code, _name, _indLv1, _indLv2, _indLv3, _lotsize, _mktcap, _shsType) '''   
+    
+    print("|".join([code,_name,_indLv1,_indLv2,_indLv3,_lotsize,_mktcap,_shsType]))
+    
+
             
    
 
@@ -241,6 +255,8 @@ def main():
     #sync_equ_list("INVC")
     #sync_equ_list("GEMS")
     get_hkex_equ_dtl("00451")
+    
+    get_hkex_equ_dtl("03988")
  
 if __name__ == "__main__":
     main()                

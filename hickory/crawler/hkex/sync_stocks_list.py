@@ -254,9 +254,9 @@ def main():
     #sync_equ_list("HDRS")
     #sync_equ_list("INVC")
     #sync_equ_list("GEMS")
-    get_hkex_equ_dtl("00451")
+    get_hkex_equ_dtl("00273")
     
-    get_hkex_equ_dtl("03988")
+    #get_hkex_equ_dtl("03988")
  
 if __name__ == "__main__":
     main()                

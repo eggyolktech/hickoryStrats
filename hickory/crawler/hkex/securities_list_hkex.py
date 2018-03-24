@@ -28,7 +28,8 @@ def main():
                 is_sec = False
                 
         if (is_sec and int(row[0]) > 256):
-            print(row[0] + " - " + row[1] + " (" + row[2] + ")")            
+            print(row[0] + " - " + row[1] + " (" + row[2] + ")")    
+            print(row[0].strip())
             sync_stocks_list.get_hkex_equ_dtl(row[0].strip())
     
     #print(dflist[dflist.columns[0]])

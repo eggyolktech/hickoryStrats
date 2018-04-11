@@ -93,6 +93,8 @@ def get_us_stock_quote(code):
         quote_result["Direction"] = "NONE"
     else:
         quote_result["Direction"] = "UP"
+        quote_result["ChangeVal"] = "+" + quote_result["ChangeVal"]
+        quote_result["ChangePercent"] = "+" + quote_result["ChangePercent"]
     
     quote_result["MktCap"] = mkt_cap
 

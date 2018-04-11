@@ -3,6 +3,7 @@ import sqlite3
 import sys
 
 DB_FILE = '/app/hickoryStrats/hickory/db/stock_db.dat'
+#DB_FILE = '/app/hickoryStrats/hickory/db/stock_hk_db.dat'
 
 def init():
 
@@ -41,7 +42,6 @@ def list_stocks():
 def manage_stock(cat, code, name, industryLv1, industryLv2, industryLv3, lotSize, mktCap, shsType="N"):
 
     conn = sqlite3.connect(DB_FILE)
-
     t = (code,)
     cursor = conn.execute('SELECT * FROM STOCKS WHERE CODE=?', t)
     
@@ -50,6 +50,7 @@ def manage_stock(cat, code, name, industryLv1, industryLv2, industryLv3, lotSize
         t = (cat, name, industryLv1, industryLv2, industryLv3, lotSize, mktCap, shsType, code)
         conn.execute("UPDATE STOCKS SET CAT=?, NAME=?, INDUSTRY_LV1=?, INDUSTRY_LV2=?, INDUSTRY_LV3=?, LOT_SIZE=?, MKT_CAP=?, SHS_TYPE=? WHERE CODE=?", t)
         conn.commit()
+        print(code + " is updated")
         conn.close()
         return True
     # Blank new case
@@ -57,6 +58,7 @@ def manage_stock(cat, code, name, industryLv1, industryLv2, industryLv3, lotSize
         t = (cat, code, name, industryLv1, industryLv2, industryLv3, lotSize, mktCap, shsType)
         conn.execute("INSERT INTO STOCKS (CAT, CODE, NAME, INDUSTRY_LV1, INDUSTRY_LV2, INDUSTRY_LV3, LOT_SIZE, MKT_CAP, SHS_TYPE) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)", t)
         conn.commit()
+        print(code + " is added")
         conn.close()
         return True
 
@@ -126,8 +128,9 @@ def main(args):
     #list_stocks()
     #remove_stock('1357')
     #list_stocks()
-    print(get_stock_name('87001'))
-    print(get_stock_name('3054'))
+    print(get_stock_name('257'))
+    print(get_stock_name('2800'))
+    print(get_stock_name('823'))
  
 if __name__ == "__main__":
     main(sys.argv[1:])        

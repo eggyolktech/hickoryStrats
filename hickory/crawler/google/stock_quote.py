@@ -91,7 +91,7 @@ def get_us_stock_quote(code):
     snap_rows = snap_table.findAll("tr")
     l_range = snap_rows[0].findAll("td")[1].text.strip()
     l_open = snap_rows[2].findAll("td")[1].text.strip()
-    l_close = price_panel.find("span", {"class": "pr"}).text    
+    l_close = price_panel.find("span", {"class": "pr"}).text.strip()
 
     if price_panel.find("span", {"class": "nwp"}): 
         last_update = price_panel.find("span", {"class": "nwp"}).text
@@ -125,6 +125,9 @@ def get_us_stock_quote(code):
         quote_result["Volume"] = volume.strip("\r\n")
         quote_result["Turnover"] = turnover
     elif (not stock_util.is_number(volume) and not stock_util.is_float(volume)): 
+        volume = volume.strip()
+        #print("[" + volume + "]")
+        #print("[" + volume.strip()[:-1] + "]")
         turnover = "%.2f" % (float(volume[:-1]) * float(l_close)) + volume[-1]
         quote_result["Volume"] = volume.strip("\r\n")
         quote_result["Turnover"] = turnover
@@ -287,14 +290,17 @@ def constructPassageAttributes(key, qDict):
         return ""
 
 def main():
+    
+    #print(get_quote_message("TYO:9697","US",False))
 
     quote = get_us_stock_quote('AAPL')
-    quote = get_us_stock_quote('DFT')
+    print(quote)
+    #quote = get_us_stock_quote('DFT')
     #quote = get_us_stock_quote('SWFT')
     #quote = get_cn_stock_quote('000001')
     #quote = get_stock_quote('3054')
-    for key, value in quote.items():
-        print(key, ":", value)
+    #for key, value in quote.items():
+    #    print(key, ":", value)
     #print(get_stock_quote_derivative('28497'))
     #print(get_stock_quote_derivative('60002'))
     #print(get_quote_message('28497', "HK", False))
@@ -302,15 +308,15 @@ def main():
     #print(get_quote_message('000001',"CN", False))
  
     #print(get_quote_message('DFT',"US", False))
-    print(get_quote_message('GOOG',"US", False))
-    print(get_quote_message('MSFT',"US", False))
+    #print(get_quote_message('GOOG',"US", False))
+    #print(get_quote_message('MSFT',"US", False))
     #print(get_quote_message('SNAP',"US", True))
     #print(get_quote_message('AMZN',"US", False))
 
-    print(get_quote_message('btc',"US", False))
-    print(get_fx_quote_message("BTC"))
-    print(get_fx_quote_message("EUR"))
-    print(get_fx_quote_message("jpy"))
+    #print(get_quote_message('btc',"US", False))
+    #print(get_fx_quote_message("BTC"))
+    #print(get_fx_quote_message("EUR"))
+    #print(get_fx_quote_message("jpy"))
 
 
 if __name__ == "__main__":

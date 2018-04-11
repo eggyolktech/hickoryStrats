@@ -409,10 +409,14 @@ def get_quote_message(code, region="HK", simpleMode=True):
         quote_result = get_cn_stock_quote(code)
     elif (region == "US"):
         try:
-            if (code.upper() in google_stock_quote.DICT_CURRENCY):
-                return google_stock_quote.get_fx_quote_message(code)
-            else:
-                quote_result = google_stock_quote.get_us_stock_quote(code)
+            
+            quote_result = get_us_stock_quote(code)
+            isGoogle = False
+
+            #if (code.upper() in google_stock_quote.DICT_CURRENCY):
+            #    return google_stock_quote.get_fx_quote_message(code)
+            #else:
+            #    quote_result = google_stock_quote.get_us_stock_quote(code)
         except:
             quote_result = get_us_stock_quote(code)
             isGoogle = False
@@ -478,7 +482,8 @@ def constructPassageAttributes(key, qDict):
 
 def main():
 
-    #quote = get_us_stock_quote('HEES')
+    quote = get_us_stock_quote('AAPL')
+    print(quote)
     #quote = get_cn_stock_quote('000001')
     #quote = get_stock_quote('3054')
     #for key, value in quote.items():

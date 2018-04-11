@@ -84,7 +84,7 @@ def manageStockTech(code, idm):
     lastclose = bars.iloc[-1]['Close']
     lb = len(bars)
 
-    print(bars)
+    #print(bars)
 
     _1mth_close = bars.iloc[lb-21]['Close'] if lb > 21 else firstclose
     _3mth_close = bars.iloc[lb-63]['Close'] if lb > 63 else firstclose
@@ -97,10 +97,10 @@ def manageStockTech(code, idm):
     _3mth_change = ((lastclose - _3mth_close) / _3mth_close) * 100
     _52week_change = ((lastclose - _12mth_close) / _12mth_close) * 100
 
-    print([lastclose, _1mth_close])
-    print([lastclose, _3mth_close])
-    print([lastclose, _12mth_close])
-    print([_1mth_change, _3mth_change, _52week_change])
+    #print([lastclose, _1mth_close])
+    #print([lastclose, _3mth_close])
+    #print([lastclose, _12mth_close])
+    #print([_1mth_change, _3mth_change, _52week_change])
 
     _1mth_idx_change = idm[0]
     _3mth_idx_change = idm[1]

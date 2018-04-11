@@ -3,6 +3,7 @@
 from bs4 import BeautifulSoup
 import requests
 import locale
+import json
 import re
 from hickory.util import stock_util
 from datetime import datetime
@@ -24,7 +25,7 @@ def get_us_stock_quote(code):
     code = code.upper().strip()
     url = "https://api.iextrading.com/1.0/stock/market/batch?symbols=%s&types=quote,stats" % code
 
-    #print("URL: [" + url + "]")
+    print("URL: [" + url + "]")
     quote_result = {}
 
     headers = {'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/39.0.2171.95 Safari/537.36'}
@@ -32,7 +33,7 @@ def get_us_stock_quote(code):
     r = requests.get(url, headers=headers)
     jsondata = r.text 
     data = json.loads(jsondata)
-    print(data)
+    #print(data)
     
     if (not code in data):
         return quote_result
@@ -42,7 +43,7 @@ def get_us_stock_quote(code):
 
     name = quote_obj["companyName"]
     
-    l_range = "%.2f - %.2f " % (quote_obj["low"], quote_obj["high"])
+    l_range = str("%.2f - %.2f " % (quote_obj["low"], quote_obj["high"]))
     l_open = str(quote_obj["open"])
     l_close = str(quote_obj["close"])
 
@@ -51,8 +52,8 @@ def get_us_stock_quote(code):
     change_val = str(quote_obj["change"])
     change_pct = ("%.2f" % (quote_obj["changePercent"]*100)) + "%"
     
-    volume = quote_obj["latestVolume"]
-    mean_vol = quote_obj["avgTotalVolume"]
+    volume = str(quote_obj["latestVolume"])
+    mean_vol = str(quote_obj["avgTotalVolume"])
 
     if (mean_vol):
         f_vol_now = stock_util.rf(volume)
@@ -68,7 +69,7 @@ def get_us_stock_quote(code):
         quote_result["Volume"] = stock_util.rf2s(float(volume.strip("\r\n")))
         quote_result["Turnover"] = stock_util.rf2s(float(turnover))
 
-    mkt_cap = stock_util.rf2s(quote_obj["marketcap"])
+    mkt_cap = stock_util.rf2s(quote_obj["marketCap"])
     pe_ratio = quote_obj["peRatio"]
     
     wk_low = quote_obj["week52Low"]
@@ -92,14 +93,14 @@ def get_us_stock_quote(code):
         quote_result["Direction"] = "NONE"
     else:
         quote_result["Direction"] = "UP"
-
+    
     quote_result["MktCap"] = mkt_cap
 
     quote_result["Range"] = l_range
 
     quote_result["Open"] = l_open
 
-    quote_result["LastUpdate"] = last_update.
+    quote_result["LastUpdate"] = last_update
 
     quote_result["PE"] = pe_ratio
     
@@ -121,13 +122,7 @@ def get_quote_message(code, region="US", simpleMode=True):
     locale.setlocale( locale.LC_ALL, '' )
     passage = ""
     
-    if (region == "HK"):
-        quote_result = m18_stock_quote.get_hk_stock_quote(code)
-        quote_result["CompanyProfile"] = "/qS" + code
-    elif (region == "CN"):
-        quote_result = get_cn_stock_quote(code)
-    elif (region == "US"):
-        quote_result = get_us_stock_quote(code)
+    quote_result = get_us_stock_quote(code)
     
     #print(quote_result)
     if (not quote_result):
@@ -155,18 +150,19 @@ def get_quote_message(code, region="US", simpleMode=True):
       
         if ("52WeekHigh" in quote_result and "52WeekLow" in quote_result): 
             if (not quote_result["52WeekHigh"] == "N/A" and not quote_result["52WeekLow"] == "N/A"):
-                if (region == "US" and isGoogle):
-                    #print(quote_result["Range"])
+                if (region == "US"):
+                    print(quote_result["Range"])
+                    print(quote_result["Range"].split("-")[1].replace(",",""))
                     if (quote_result["Range"].strip() == "-"):
                         print("Range is empty")
-                    elif (float(quote_result["Range"].split("-")[1].replace(",",""))) >= float(quote_result["52WeekHigh"].replace(",","")):
+                    elif (float(quote_result["Range"].split("-")[1].replace(",",""))) >= float(quote_result["52WeekHigh"]):
                         passage = passage + u'\U0001F525' + "<i>52 Week High</i>" + EL
-                    elif (float(quote_result["Range"].split("-")[1].replace(",",""))) <= float(quote_result["52WeekLow"].replace(",","")):
+                    elif (float(quote_result["Range"].split("-")[1].replace(",",""))) <= float(quote_result["52WeekLow"]):
                         passage = passage + u'\U00002744' + "<i>52 Week Low</i>" + EL 
                 else:
-                    if (float(quote_result["Close"])) > float(quote_result["52WeekHigh"].replace(",","")):
+                    if (float(quote_result["Close"])) > float(quote_result["52WeekHigh"]):
                         passage = passage + u'\U0001F525' + "<i>52 Week High</i>" + EL
-                    elif (float(quote_result["Close"])) < float(quote_result["52WeekLow"].replace(",","")):
+                    elif (float(quote_result["Close"])) < float(quote_result["52WeekLow"]):
                         passage = passage + u'\U00002744' + "<i>52 Week Low</i>" + EL 
         
         if (simpleMode):
@@ -243,7 +239,7 @@ def get_quote_message(code, region="US", simpleMode=True):
 def constructPassageAttributes(key, qDict):
 
     if (key in qDict):
-        return key + ": " + qDict[key] + EL
+        return key + ": " + str(qDict[key]) + EL
     else:
         return ""
 
@@ -258,10 +254,8 @@ def main():
     #print(get_quote_message('SNAP',"US", True))
     #print(get_quote_message('AMZN',"US", False))
 
-    print(get_quote_message('btc',"US", False))
-    print(get_fx_quote_message("BTC"))
-    print(get_fx_quote_message("EUR"))
-    print(get_fx_quote_message("jpy"))
+    print(get_quote_message('BIDU',"US", False))
+
 
 
 if __name__ == "__main__":

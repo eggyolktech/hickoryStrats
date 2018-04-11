@@ -51,7 +51,7 @@ def main():
                     get_stk_dtl(_code, _stk_cat)
 
 def get_stk_dtl(_code, _stk_cat):
-
+        
     if ("Equity" in _stk_cat):
         stock_detail.get_hkex_equ_dtl(_code)
     elif ("Exchange Traded" in _stk_cat):

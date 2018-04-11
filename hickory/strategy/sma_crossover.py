@@ -70,10 +70,13 @@ class MarketOnClosePortfolio(Portfolio):
                     
     def backtest_portfolio(self):
         pf = pd.DataFrame(index=self.bars.index)
+        pf['close'] = self.bars['Close']
+        pf['pos'] = self.positions
         pf['holdings'] = self.positions.mul(self.bars['Close'], axis='index')
         pf['cash'] = self.initial_capital - pf['holdings'].cumsum()
         pf['total'] = pf['cash'] + self.positions[self.symbol].cumsum() * self.bars['Close']
         pf['returns'] = pf['total'].pct_change()
+        print(pf.to_string())
         return pf
         
 if __name__ == "__main__":
@@ -81,18 +84,20 @@ if __name__ == "__main__":
     # Obtain daily bars of AAPL from Yahoo Finance for the period
     # 1st Jan 1990 to 1st Jan 2002 - This is an example from ZipLine
     symbol = 'AAPL'
-    bars = web.DataReader(symbol, "yahoo", datetime.datetime(1990, 1, 1), datetime.datetime(2002, 1, 1))
+    bars = web.DataReader(symbol, "yahoo", datetime.datetime(2014, 1, 1), datetime.datetime(2017, 1, 1))
 
     # Create a Moving Average Cross Strategy instance with a short moving
     # average window of 100 days and a long window of 400 days
-    mac = MovingAverageCrossStrategy(symbol, bars, short_window=100, long_window=400)
+    mac = MovingAverageCrossStrategy(symbol, bars, short_window=26, long_window=52)
     signals = mac.generate_signals()
+
+    #print(bars.tail(30))    
+    #print(signals.tail(60))
 
     # Create a portfolio of AAPL, with $100,000 initial capital
     portfolio = MarketOnClosePortfolio(symbol, bars, signals, initial_capital=100000.0)
+    #print(portfolio.positions.tail(200).to_string())
     pf = portfolio.backtest_portfolio()
-
-    print(bars.head())
     
     fig = plt.figure(figsize=(15, 20))
     #fig = plt.figure()

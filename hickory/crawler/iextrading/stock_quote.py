@@ -77,6 +77,8 @@ def get_us_stock_quote(code):
 
     dividend = stats_obj["dividendRate"]
     _yield = stats_obj["dividendYield"]
+    
+    #print("div %s, yield %s" % (dividend, _yield))
 
     eps = stats_obj["ttmEPS"]
     shares = stats_obj["sharesOutstanding"]
@@ -138,9 +140,9 @@ def get_quote_message(code, region="US", simpleMode=True):
         elif (quote_result["Direction"] == "DOWN"):
             direction = u'\U0001F53B'
 
-        passage = "<b>" + quote_result["CodeName"] + "</b>" + " (" + code + ")" + EL
+        passage = "<b>" + quote_result["CodeName"] + "</b>" + " (" + code.upper() + ")" + EL
         passage = passage + direction + "" + "$%.3f" % float(quote_result["Close"]) + " (" + quote_result["ChangeVal"] + "/" + quote_result["ChangePercent"] + ")" + EL
-        passage = passage + quote_result["Range"] + " (" + quote_result["Volume"] + "/" + quote_result["Turnover"] + ")"+ EL
+        passage = passage + "$" + quote_result["Range"].replace("- ", "- $") + " (" + quote_result["Volume"] + "/" + quote_result["Turnover"] + ")"+ EL
 
         icon_v2v = ""
         if ("V2V" in quote_result):
@@ -179,65 +181,6 @@ def get_quote_message(code, region="US", simpleMode=True):
 
     return passage
 
-    locale.setlocale( locale.LC_ALL, '' )
-    passage = ""
-    
-    if (region == "HK"):
-        quote_result = {}
-        #quote_result = get_stock_quote(code)
-    elif (region == "CN"):
-        quote_result = {}
-        #quote_result = get_cn_stock_quote(code)
-    elif (region == "US"):
-        print("Retrieveing code: " + code.upper())
-        if (code.upper() in DICT_CURRENCY):
-            return get_fx_quote_message(code)
-        else:
-            quote_result = get_us_stock_quote(code)
-    
-    #print(quote_result)
-    if (not quote_result):
-        passage = "Result not found for " + code
-    else:    
-
-        direction = u'\U0001F539'
-
-        if (quote_result["Direction"] == "UP"):
-            direction = u'\U0001F332'
-        elif (quote_result["Direction"] == "DOWN"):
-            direction = u'\U0001F53B'
-
-        passage = "<b>" + quote_result["CodeName"] + "</b>" + EL
-        passage = passage + direction + "" + "$%.3f" % float(quote_result["Close"]) + " (" + quote_result["ChangeVal"] + "/" + quote_result["ChangePercent"] + ")" + EL
-        passage = passage + quote_result["Range"] + " (" + quote_result["Volume"] + "/" + quote_result["Turnover"] + ")"+ EL
-
-        icon_v2v = ""
-        if ("V2V" in quote_result):
-            if (float(quote_result["V2V"]) > 1.5):
-                 icon_v2v = u'\U0001F414'
-            elif (float(quote_result["V2V"]) > 1.0):
-                 icon_v2v = u'\U0001F424'
-            passage = passage + icon_v2v +  "V/AV " + "x" + quote_result["V2V"] + EL
-      
-        if ("52WeekHigh" in quote_result and "52WeekLow" in quote_result): 
-            if (not quote_result["52WeekHigh"] == "N/A" and not quote_result["52WeekLow"] == "N/A"):
-                if (float(quote_result["Close"])) > float(quote_result["52WeekHigh"].replace(",","")):
-                    passage = passage + u'\U0001F525' + "<i>52 Week High</i>" + EL
-                elif (float(quote_result["Close"])) < float(quote_result["52WeekLow"].replace(",","")):
-                    passage = passage + u'\U00002744' + "<i>52 Week Low</i>" + EL 
-        
-        if (simpleMode):
-            return passage     
-
-        passage = passage + EL 
-
-        attrs = ["Open", "PrevClose", "LotSize", "PE", "Yield", "DivRatio", "EPS", "MktCap", "NAV", "52WeekHigh", "52WeekLow", "Exchange", "ImpVol", "RemainingDays", "Strike", "CallPrice", "SpotVsCall", "EffGearing", "Delta", "Premium", "OutStanding", "Moneyness", "Underlying", "Shares", "Beta", "LastUpdate"] 
-
-        for attr in attrs:
-            passage = passage + constructPassageAttributes(attr, quote_result)
-
-    return passage
-
 def constructPassageAttributes(key, qDict):
 
     if (key in qDict):
@@ -256,7 +199,7 @@ def main():
     #print(get_quote_message('SNAP',"US", True))
     #print(get_quote_message('AMZN',"US", False))
 
-    print(get_quote_message('BIDU',"US", False))
+    print(get_quote_message('BRK.B',"US", False))
 
 
 

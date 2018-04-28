@@ -46,6 +46,7 @@ def get_us_stock_quote(code):
     l_range = str("%.2f - %.2f " % (quote_obj["low"], quote_obj["high"]))
     l_open = str(quote_obj["open"])
     l_close = str(quote_obj["close"])
+    l_close = str(quote_obj["iexRealtimePrice"])
 
     last_update = str(datetime.fromtimestamp(quote_obj["latestUpdate"]/1000.0).strftime('%Y-%m-%d %H:%M:%S'))
 
@@ -190,16 +191,16 @@ def constructPassageAttributes(key, qDict):
 
 def main():
 
-    quote = get_us_stock_quote('AAPL')
-    quote = get_us_stock_quote('DFT')
-    for key, value in quote.items():
-        print(key, ":", value)
+    #quote = get_us_stock_quote('AAPL')
+    #quote = get_us_stock_quote('DFT')
+    #for key, value in quote.items():
+    #    print(key, ":", value)
     print(get_quote_message('GOOG',"US", False))
-    print(get_quote_message('MSFT',"US", False))
+    print(get_quote_message('ANET',"US", False))
     #print(get_quote_message('SNAP',"US", True))
     #print(get_quote_message('AMZN',"US", False))
 
-    print(get_quote_message('BRK.B',"US", False))
+    #print(get_quote_message('BRK.B',"US", False))
 
 
 

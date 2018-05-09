@@ -16,15 +16,10 @@ TAG_RE = re.compile(r'<[^>]+>')
 def remove_tags(text):
     return TAG_RE.sub('', text)
 
-def get_cn_stock_quote(code):
-   
-   quote_result = {}
-   return quote_result
-
-def get_us_stock_quote(code):
+def get_jp_stock_quote(code):
 
     code = code.upper().strip()
-    url = "https://api.iextrading.com/1.0/stock/market/batch?symbols=%s&types=quote,stats" % code
+    url = "https://quotes.wsj.com/JP/%s" % code
 
     print("URL: [" + url + "]")
     quote_result = {}
@@ -33,10 +28,29 @@ def get_us_stock_quote(code):
 
     r = requests.get(url, headers=headers)
     jsondata = r.text 
-    data = json.loads(jsondata)
-    #print(data)
+    soup = BeautifulSoup(html, "html.parser")
     
-    if (not code in data):
+   
+    nameSpan = soup.find('span', {"class": "companyName"})
+    
+    if (not nameSpan):
+        return quote_result
+    else:
+        print(nameSpan.text)
+    
+    '''for a in soup.findAll('a', id=re.compile("^cp_ucAAFNSearch_repNews")):
+        #print(link)
+        t = a.parent.find_next_sibling("div")
+        aURL = a['href']
+        aTitle = a['title']
+        if aURL.startswith("/"):
+             aURL = "http://www.aastocks.com" + aURL
+
+        if count >= number:
+            break'''
+   
+    
+    '''if (not code in data):
         return quote_result
         
     quote_obj = data[code]["quote"]
@@ -119,16 +133,16 @@ def get_us_stock_quote(code):
     quote_result["Beta"] = beta
 
     quote_result["52WeekLow"] = wk_low
-    quote_result["52WeekHigh"] = wk_high
+    quote_result["52WeekHigh"] = wk_high'''
    
     return quote_result
 
-def get_quote_message(code, region="US", simpleMode=True):
+def get_quote_message(code, simpleMode=True):
 
     locale.setlocale( locale.LC_ALL, '' )
     passage = ""
     
-    quote_result = get_us_stock_quote(code)
+    quote_result = get_jp_stock_quote(code)
     
     #print(quote_result)
     if (not quote_result):
@@ -192,17 +206,13 @@ def constructPassageAttributes(key, qDict):
 
 def main():
 
+    get_jp_stock_quote('8301')
     #quote = get_us_stock_quote('AAPL')
     #quote = get_us_stock_quote('DFT')
     #for key, value in quote.items():
     #    print(key, ":", value)
-    print(get_quote_message('GOOG',"US", False))
-    print(get_quote_message('ANET',"US", False))
-    #print(get_quote_message('SNAP',"US", True))
-    #print(get_quote_message('AMZN',"US", False))
-
-    #print(get_quote_message('BRK.B',"US", False))
-
+    #print(get_quote_message('8301', False))
+    #print(get_quote_message('9697', False))
 
 
 if __name__ == "__main__":

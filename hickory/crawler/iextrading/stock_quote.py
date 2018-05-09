@@ -45,9 +45,11 @@ def get_us_stock_quote(code):
     
     l_range = str("%.2f - %.2f " % (quote_obj["low"], quote_obj["high"]))
     l_open = str(quote_obj["open"])
-    l_close = str(quote_obj["close"])
     l_close = str(quote_obj["iexRealtimePrice"])
-
+    
+    if (l_close.strip() == "None"):
+        l_close = str(quote_obj["close"])
+ 
     last_update = str(datetime.fromtimestamp(quote_obj["latestUpdate"]/1000.0).strftime('%Y-%m-%d %H:%M:%S'))
 
     change_val = str(quote_obj["change"])

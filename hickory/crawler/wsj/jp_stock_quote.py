@@ -30,53 +30,33 @@ def get_jp_stock_quote(code):
     jsondata = r.text 
     soup = BeautifulSoup(html, "html.parser")
     
-   
     nameSpan = soup.find('span', {"class": "companyName"})
     
     if (not nameSpan):
         return quote_result
-    else:
-        print(nameSpan.text)
-    
-    '''for a in soup.findAll('a', id=re.compile("^cp_ucAAFNSearch_repNews")):
-        #print(link)
-        t = a.parent.find_next_sibling("div")
-        aURL = a['href']
-        aTitle = a['title']
-        if aURL.startswith("/"):
-             aURL = "http://www.aastocks.com" + aURL
 
-        if count >= number:
-            break'''
-   
+    infoUl = soup.findAll('ul', {"class": "cr_data_collection"})[0]
+    cDataUl = soup.findAll('ul', {"class": "cr_data_collection"})[1]
     
-    '''if (not code in data):
-        return quote_result
-        
-    quote_obj = data[code]["quote"]
-    stats_obj = data[code]["stats"]
-
-    name = quote_obj["companyName"]
+    name = nameSpan.text
+    l_range = infoUl.findAll('li', {"class": "cr_data_row"})[2].find('span', {"class": "data_data"}).text.replace(",","")
+    l_open = cDataUl.findAll('span', {"class": "data_data"})[0].text.replace(",","")
+    l_close = str(soup.find('span', {"class": "cr_curr_price"}).text.replace(",",""))
     
-    l_range = str("%.2f - %.2f " % (quote_obj["low"], quote_obj["high"]))
-    l_open = str(quote_obj["open"])
-    l_close = str(quote_obj["close"])
-    l_close = str(quote_obj["iexRealtimePrice"])
+    last_update = soup.find('li', {"class": "crinfo_time"}).text
 
-    last_update = str(datetime.fromtimestamp(quote_obj["latestUpdate"]/1000.0).strftime('%Y-%m-%d %H:%M:%S'))
-
-    change_val = str(quote_obj["change"])
-    change_pct = ("%.2f" % (quote_obj["changePercent"]*100)) + "%"
+    change_val = soup.find('span', {"class": "diff_price"}).text
+    change_pct = soup.find('span', {"class": "diff_percent"}).text
     
-    volume = str(quote_obj["latestVolume"])
-    mean_vol = str(quote_obj["avgTotalVolume"])
+    volume = infoUl.findAll('li', {"class": "cr_data_row"})[0].find('span', {"class": "data_data"}).text.replace(",","")
+    mean_vol = infoUl.findAll('li', {"class": "cr_data_row"})[1].find('span', {"class": "data_data"}).text.replace(",","")
 
     if (mean_vol):
         f_vol_now = stock_util.rf(volume)
         f_vol_avg = stock_util.rf(mean_vol)
         quote_result["V2V"] = "%.2f" % (float(f_vol_now) / float(f_vol_avg))
 
-    if ("0.00" in volume):
+    if ("0" == volume):
         turnover = "N/A"
         quote_result["Volume"] = volume
         quote_result["Turnover"] = turnover
@@ -85,21 +65,22 @@ def get_jp_stock_quote(code):
         quote_result["Volume"] = stock_util.rf2s(float(volume.strip("\r\n")))
         quote_result["Turnover"] = stock_util.rf2s(float(turnover))
 
-    mkt_cap = stock_util.rf2s(quote_obj["marketCap"])
-    pe_ratio = quote_obj["peRatio"]
+    keyDataUl = soup.find('div', {"class": "cr_keystock_drawer"}).findAll("ul", {"class": "cr_data_collection"})[0]
     
-    wk_low = quote_obj["week52Low"]
-    wk_high = quote_obj["week52High"]
+    mkt_cap = str(keyDataUl.findAll("li", {"class": "cr_data_row"})[2].find("span").text)
+    pe_ratio = str(keyDataUl.findAll("li", {"class": "cr_data_row"})[0].find("span").text)
+    
+    range52 = infoUl.findAll('li', {"class": "cr_data_row"})[3].find('span', {"class": "data_data"}).text.replace(",","")
+    wk_low = range52.split("-")[0].strip()
+    wk_high = range52.split("-")[1].strip()
 
-    dividend = stats_obj["dividendRate"]
-    _yield = stats_obj["dividendYield"]
+    _yield = str(keyDataUl.findAll("li", {"class": "cr_data_row"})[5].find("span").text)
     
     #print("div %s, yield %s" % (dividend, _yield))
 
-    eps = stats_obj["ttmEPS"]
-    shares = stats_obj["sharesOutstanding"]
-    beta = stats_obj["beta"]
-        
+    eps = str(keyDataUl.findAll("li", {"class": "cr_data_row"})[1].find("span").text)
+    shares = str(keyDataUl.findAll("li", {"class": "cr_data_row"})[3].find("span").text)
+    
     quote_result["CodeName"] = name
     quote_result["Close"] = l_close
     quote_result["ChangeVal"] = change_val

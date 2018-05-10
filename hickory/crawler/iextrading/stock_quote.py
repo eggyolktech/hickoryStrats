@@ -47,7 +47,7 @@ def get_us_stock_quote(code):
     l_open = str(quote_obj["open"])
     l_close = str(quote_obj["iexRealtimePrice"])
     
-    if (l_close.strip() == "None"):
+    if (l_close.strip() == "None" or l_close.strip() == "0" ):
         l_close = str(quote_obj["close"])
  
     last_update = str(datetime.fromtimestamp(quote_obj["latestUpdate"]/1000.0).strftime('%Y-%m-%d %H:%M:%S'))
@@ -145,7 +145,7 @@ def get_quote_message(code, region="US", simpleMode=True):
 
         passage = "<b>" + quote_result["CodeName"] + "</b>" + " (" + code.upper() + ")" + EL
         passage = passage + direction + "" + "$%.3f" % float(quote_result["Close"]) + " (" + quote_result["ChangeVal"] + "/" + quote_result["ChangePercent"] + ")" + EL
-        passage = passage + "$" + quote_result["Range"].replace("- ", "- $") + " (" + quote_result["Volume"] + "/" + quote_result["Turnover"] + ")"+ EL
+        passage = passage + "$" + quote_result["Range"].replace("- ", "- $") + " (" + str(quote_result["Volume"]) + "/" + str(quote_result["Turnover"]) + ")"+ EL
 
         icon_v2v = ""
         if ("V2V" in quote_result):
@@ -158,8 +158,8 @@ def get_quote_message(code, region="US", simpleMode=True):
         if ("52WeekHigh" in quote_result and "52WeekLow" in quote_result): 
             if (not quote_result["52WeekHigh"] == "N/A" and not quote_result["52WeekLow"] == "N/A"):
                 if (region == "US"):
-                    print(quote_result["Range"])
-                    print(quote_result["Range"].split("-")[1].replace(",",""))
+                    #print(quote_result["Range"])
+                    #print(quote_result["Range"].split("-")[1].replace(",",""))
                     if (quote_result["Range"].strip() == "-"):
                         print("Range is empty")
                     elif (float(quote_result["Range"].split("-")[1].replace(",",""))) >= float(quote_result["52WeekHigh"]):
@@ -198,7 +198,7 @@ def main():
     #for key, value in quote.items():
     #    print(key, ":", value)
     print(get_quote_message('GOOG',"US", False))
-    print(get_quote_message('ANET',"US", False))
+    print(get_quote_message('gamr',"US", False))
     #print(get_quote_message('SNAP',"US", True))
     #print(get_quote_message('AMZN',"US", False))
 

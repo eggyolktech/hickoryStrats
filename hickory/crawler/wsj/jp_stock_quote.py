@@ -1,4 +1,3 @@
-
 #!/usr/bin/python
 
 from bs4 import BeautifulSoup
@@ -27,7 +26,7 @@ def get_jp_stock_quote(code):
     headers = {'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/39.0.2171.95 Safari/537.36'}
 
     r = requests.get(url, headers=headers)
-    jsondata = r.text 
+    html = r.text 
     soup = BeautifulSoup(html, "html.parser")
     
     nameSpan = soup.find('span', {"class": "companyName"})
@@ -41,9 +40,9 @@ def get_jp_stock_quote(code):
     name = nameSpan.text
     l_range = infoUl.findAll('li', {"class": "cr_data_row"})[2].find('span', {"class": "data_data"}).text.replace(",","")
     l_open = cDataUl.findAll('span', {"class": "data_data"})[0].text.replace(",","")
-    l_close = str(soup.find('span', {"class": "cr_curr_price"}).text.replace(",",""))
+    l_close = str(soup.find('span', {"class": "cr_curr_price"}).text.replace(",","").replace("¥",""))
     
-    last_update = soup.find('li', {"class": "crinfo_time"}).text
+    last_update = soup.find('li', {"class": "crinfo_time"}).text.strip()
 
     change_val = soup.find('span', {"class": "diff_price"}).text
     change_pct = soup.find('span', {"class": "diff_percent"}).text
@@ -78,8 +77,8 @@ def get_jp_stock_quote(code):
     
     #print("div %s, yield %s" % (dividend, _yield))
 
-    eps = str(keyDataUl.findAll("li", {"class": "cr_data_row"})[1].find("span").text)
-    shares = str(keyDataUl.findAll("li", {"class": "cr_data_row"})[3].find("span").text)
+    eps = str(keyDataUl.findAll("li", {"class": "cr_data_row"})[1].find("span").text.replace(",","").strip())
+    shares = str(keyDataUl.findAll("li", {"class": "cr_data_row"})[3].find("span").text.replace(",",""))
     
     quote_result["CodeName"] = name
     quote_result["Close"] = l_close
@@ -107,14 +106,11 @@ def get_jp_stock_quote(code):
     
     if (_yield):
         quote_result["Yield"] = _yield
-    if (dividend):
-        quote_result["DivRatio"] = dividend
     quote_result["EPS"] = eps
     quote_result["Shares"] = shares
-    quote_result["Beta"] = beta
 
     quote_result["52WeekLow"] = wk_low
-    quote_result["52WeekHigh"] = wk_high'''
+    quote_result["52WeekHigh"] = wk_high
    
     return quote_result
 
@@ -125,11 +121,11 @@ def get_quote_message(code, simpleMode=True):
     
     quote_result = get_jp_stock_quote(code)
     
-    #print(quote_result)
+    print(quote_result)
     if (not quote_result):
         passage = "Result not found for " + code
     else:    
-
+        
         direction = u'\U0001F539'
 
         if (quote_result["Direction"] == "UP"):
@@ -138,8 +134,8 @@ def get_quote_message(code, simpleMode=True):
             direction = u'\U0001F53B'
 
         passage = "<b>" + quote_result["CodeName"] + "</b>" + " (" + code.upper() + ")" + EL
-        passage = passage + direction + "" + "$%.3f" % float(quote_result["Close"]) + " (" + quote_result["ChangeVal"] + "/" + quote_result["ChangePercent"] + ")" + EL
-        passage = passage + "$" + quote_result["Range"].replace("- ", "- $") + " (" + quote_result["Volume"] + "/" + quote_result["Turnover"] + ")"+ EL
+        passage = passage + direction + "" + "¥%.3f" % float(quote_result["Close"]) + " (" + quote_result["ChangeVal"] + "/" + quote_result["ChangePercent"] + ")" + EL
+        passage = passage + "¥" + quote_result["Range"].replace("- ", "- ¥") + " (" + quote_result["Volume"] + "/" + quote_result["Turnover"] + ")"+ EL
 
         icon_v2v = ""
         if ("V2V" in quote_result):
@@ -151,21 +147,15 @@ def get_quote_message(code, simpleMode=True):
       
         if ("52WeekHigh" in quote_result and "52WeekLow" in quote_result): 
             if (not quote_result["52WeekHigh"] == "N/A" and not quote_result["52WeekLow"] == "N/A"):
-                if (region == "US"):
-                    print(quote_result["Range"])
-                    print(quote_result["Range"].split("-")[1].replace(",",""))
-                    if (quote_result["Range"].strip() == "-"):
-                        print("Range is empty")
-                    elif (float(quote_result["Range"].split("-")[1].replace(",",""))) >= float(quote_result["52WeekHigh"]):
-                        passage = passage + u'\U0001F525' + "<i>52 Week High</i>" + EL
-                    elif (float(quote_result["Range"].split("-")[1].replace(",",""))) <= float(quote_result["52WeekLow"]):
-                        passage = passage + u'\U00002744' + "<i>52 Week Low</i>" + EL 
-                else:
-                    if (float(quote_result["Close"])) > float(quote_result["52WeekHigh"]):
-                        passage = passage + u'\U0001F525' + "<i>52 Week High</i>" + EL
-                    elif (float(quote_result["Close"])) < float(quote_result["52WeekLow"]):
-                        passage = passage + u'\U00002744' + "<i>52 Week Low</i>" + EL 
-        
+                print(quote_result["Range"])
+                print(quote_result["Range"].split("-")[1].replace(",",""))
+                if (quote_result["Range"].strip() == "-"):
+                    print("Range is empty")
+                elif (float(quote_result["Range"].split("-")[1].replace(",",""))) >= float(quote_result["52WeekHigh"]):
+                    passage = passage + u'\U0001F525' + "<i>52 Week High</i>" + EL
+                elif (float(quote_result["Range"].split("-")[1].replace(",",""))) <= float(quote_result["52WeekLow"]):
+                    passage = passage + u'\U00002744' + "<i>52 Week Low</i>" + EL 
+       
         if (simpleMode):
             return passage     
 
@@ -187,18 +177,17 @@ def constructPassageAttributes(key, qDict):
 
 def main():
 
-    get_jp_stock_quote('8301')
+    #get_jp_stock_quote('8301')
     #quote = get_us_stock_quote('AAPL')
     #quote = get_us_stock_quote('DFT')
     #for key, value in quote.items():
     #    print(key, ":", value)
-    #print(get_quote_message('8301', False))
-    #print(get_quote_message('9697', False))
+    print(get_quote_message('8301', False))
+    print(get_quote_message('9697', False))
+    print(get_quote_message('9697', True))
 
 
 if __name__ == "__main__":
-    main()                
-              
-
+    main()
 
 

@@ -85,8 +85,8 @@ def get_hk_stock_quote(code):
     l_open = dd['preCPrice']
     l_close = rd['ltp']
 
-    if float(l_close) == 0:
-        l_close = rd['np']
+    #if float(l_close) == 0:
+    l_close = rd['np']
 
     if "issuedShare" in dd:
         mkt_cap = float(l_close) * float(dd["issuedShare"])

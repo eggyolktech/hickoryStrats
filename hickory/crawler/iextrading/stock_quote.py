@@ -42,7 +42,10 @@ def get_us_stock_quote(code):
     stats_obj = data[code]["stats"]
 
     name = quote_obj["companyName"]
-    
+
+    if quote_obj["low"] == None: quote_obj["low"] = 0
+    if quote_obj["high"] == None: quote_obj["high"] = 0
+   
     l_range = str("%.2f - %.2f " % (quote_obj["low"], quote_obj["high"]))
     l_open = str(quote_obj["open"])
     l_close = str(quote_obj["iexRealtimePrice"])
@@ -156,7 +159,8 @@ def get_quote_message(code, region="US", simpleMode=True):
             passage = passage + icon_v2v +  "V/AV " + "x" + quote_result["V2V"] + EL
       
         if ("52WeekHigh" in quote_result and "52WeekLow" in quote_result): 
-            if (not quote_result["52WeekHigh"] == "N/A" and not quote_result["52WeekLow"] == "N/A"):
+            #print("[%s]" % quote_result["Range"])
+            if (not quote_result["Range"].strip() == "0.00 - 0.00" and not quote_result["52WeekHigh"] == "N/A" and not quote_result["52WeekLow"] == "N/A"):
                 if (region == "US"):
                     #print(quote_result["Range"])
                     #print(quote_result["Range"].split("-")[1].replace(",",""))
@@ -197,8 +201,8 @@ def main():
     #quote = get_us_stock_quote('DFT')
     #for key, value in quote.items():
     #    print(key, ":", value)
-    #print(get_quote_message('GOOG',"US", False))
-    print(get_quote_message('SSW-G',"US", False))
+    print(get_quote_message('BABA',"US", True))
+    print(get_quote_message('MSFT',"US", True))
     print(get_quote_message('SSW-G',"US", True))
     #print(get_quote_message('SNAP',"US", True))
     #print(get_quote_message('AMZN',"US", False))

@@ -126,7 +126,7 @@ def get_hkex_etf_dtl(code):
     
     _name = soup.find("div", {"class": "left_list_title"}).find("p", {"class": "col_name"}).text
     _name = _name.split()[0].strip()    
-    _longname = soup.find("span", {"class": "col_longname"}).text.strip()
+    _longname = soup.find("div", {"class": "col_longname"}).text.strip()
     _lotsize = soup.find("dt", {"class": "col_lotsize"}).text.replace(",","").strip()
     _issuer = soup.find("td", {"class": "col_issuer"}).text.strip()
     _mktcaptxt = soup.find("dt", {"class": "col_aum"}).text.strip()

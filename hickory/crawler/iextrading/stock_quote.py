@@ -197,8 +197,9 @@ def main():
     #quote = get_us_stock_quote('DFT')
     #for key, value in quote.items():
     #    print(key, ":", value)
-    print(get_quote_message('GOOG',"US", False))
-    print(get_quote_message('gamr',"US", False))
+    #print(get_quote_message('GOOG',"US", False))
+    print(get_quote_message('SSW-G',"US", False))
+    print(get_quote_message('SSW-G',"US", True))
     #print(get_quote_message('SNAP',"US", True))
     #print(get_quote_message('AMZN',"US", False))
 

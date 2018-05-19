@@ -39,6 +39,19 @@ def list_stocks():
 
     conn.close()
 
+def is_stock_exist(code):
+
+    conn = sqlite3.connect(DB_FILE)
+    t = (code.zfill(5),)
+    cursor = conn.execute('SELECT * FROM STOCKS WHERE CODE=?', t)
+
+    # There is record already
+    if (cursor.fetchone()):
+        conn.close()
+        return True
+    
+    return False
+
 def manage_stock(cat, code, name, industryLv1, industryLv2, industryLv3, lotSize, mktCap, shsType="N"):
 
     conn = sqlite3.connect(DB_FILE)
@@ -128,9 +141,12 @@ def main(args):
     #list_stocks()
     #remove_stock('1357')
     #list_stocks()
-    print(get_stock_name('257'))
-    print(get_stock_name('2800'))
-    print(get_stock_name('823'))
+    #print(get_stock_name('257'))
+    #print(get_stock_name('2800'))
+    #print(get_stock_name('823'))
+
+    for code in ['1','2','2800','87001','87002']:
+        print(is_stock_exist(code))
  
 if __name__ == "__main__":
     main(sys.argv[1:])        

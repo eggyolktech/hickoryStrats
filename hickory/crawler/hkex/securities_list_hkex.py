@@ -5,6 +5,7 @@ import os
 import time
 import pandas as pd
 from hickory.crawler.hkex import stock_detail 
+from hickory.db import stock_db
 
 def main():
     
@@ -25,7 +26,7 @@ def main():
     dff = df1[2:]
     
     FILTER_CAT = ["Debt Securities", "Equity Warrants", "Derivative Warrants", "Callable Bull"]
-    OFFSET = 3170   
+    OFFSET = 0   
  
     for index, row in dff.iterrows():
         is_sec = True
@@ -51,7 +52,11 @@ def main():
                     get_stk_dtl(_code, _stk_cat)
 
 def get_stk_dtl(_code, _stk_cat):
-        
+ 
+    if (stock_db.is_stock_exist(_code)):
+        print(_code + " already exists!!")
+        return
+
     if ("Equity" in _stk_cat):
         stock_detail.get_hkex_equ_dtl(_code)
     elif ("Exchange Traded" in _stk_cat):

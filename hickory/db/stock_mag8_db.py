@@ -6,7 +6,10 @@ from datetime import tzinfo, timedelta, datetime
 
 DB_FILE = '/app/hickoryStrats/hickory/db/stock_db.dat'
 
-MAIN_WHERE_CLAUSE = "  and _150_DAY_MA >= _200_DAY_MA AND _50_DAY_MA > _150_DAY_MA and _30_DAY_MA > _200_DAY_MA and _52WEEK_HSI_RELATIVE >= 20 AND LAST_CLOSE > _150_DAY_MA AND LAST_CLOSE > _200_DAY_MA AND LAST_CLOSE > _50_DAY_MA AND LAST_CLOSE > _100_DAY_MA AND (LAST_CLOSE - _52WEEK_LOW)/_52WEEK_LOW >= 0.3 AND LAST_CLOSE > _52WEEK_HIGH * 0.75 AND _3MONTH_AVG_TURNOVER >= 1.5 * 1000000 "
+MAIN_WHERE_CLAUSE = " AND NOT (STOCKS_TECH.CODE LIKE '08%') and _150_DAY_MA >= _200_DAY_MA AND _50_DAY_MA > _150_DAY_MA and _30_DAY_MA > _200_DAY_MA and _52WEEK_HSI_RELATIVE >= 20 AND LAST_CLOSE > _150_DAY_MA AND LAST_CLOSE > _200_DAY_MA AND LAST_CLOSE > _50_DAY_MA AND LAST_CLOSE > _100_DAY_MA AND (LAST_CLOSE - _52WEEK_LOW)/_52WEEK_LOW >= 0.3 AND LAST_CLOSE > _52WEEK_HIGH * 0.75 AND _3MONTH_AVG_TURNOVER >= 1.5 * 1000000"
+
+#MAIN_MKT_CAP = " AND MKT_CAP >= 1000000000"
+MAIN_MKT_CAP = " "
 
 def init():
 
@@ -64,7 +67,7 @@ def get_mag8_stocks_dict(limit):
         
     sql = (" select STOCKS.code from stocks, stocks_tech "
             + " where stocks.code = stocks_tech.code "          
-            + MAIN_WHERE_CLAUSE
+            + MAIN_WHERE_CLAUSE + MAIN_MKT_CAP
             + " ORDER BY Y8_ROC_MARK DESC "
             + " LIMIT " + str(limit) + ";")       
             #+ " ORDER BY _52WEEK_HSI_RELATIVE DESC;")       
@@ -90,9 +93,9 @@ def get_mag8_stocks():
 
     stocks = []
         
-    sql = (" select STOCKS.name as stockname, STOCKS.INDUSTRY_LV3, STOCKS_TECH.* from stocks, stocks_tech "
+    sql = (" select STOCKS.name as stockname, STOCKS.MKT_CAP, STOCKS.INDUSTRY_LV2, STOCKS.INDUSTRY_LV3, STOCKS_TECH.* from stocks, stocks_tech "
             + " where stocks.code = stocks_tech.code "          
-            + MAIN_WHERE_CLAUSE
+            + MAIN_WHERE_CLAUSE + MAIN_MKT_CAP
             + " ORDER BY Y8_ROC_MARK DESC;")       
             #+ " ORDER BY _52WEEK_HSI_RELATIVE DESC;")       
  
@@ -133,9 +136,9 @@ def main(args):
         init()
 
     #update_mag8_stocks_entry()
-    #print(get_mag8_stocks())
+    print(get_mag8_stocks())
     #print(get_mag8_stocks_list())
-    get_mag8_stocks_dict(100)
+    #get_mag8_stocks_dict(100)
 
 if __name__ == "__main__":
     main(sys.argv[1:])        

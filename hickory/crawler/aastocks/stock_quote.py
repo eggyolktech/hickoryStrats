@@ -6,7 +6,6 @@ import locale
 import re
 from hickory.db import stock_tech_db, stock_db
 from hickory.util import stock_util
-from hickory.crawler.google import stock_quote as google_stock_quote
 from hickory.crawler.money18 import stock_quote as m18_stock_quote
 #from market_watch.db import market_db
 
@@ -202,7 +201,7 @@ def get_us_stock_quote(code):
     else:
         quote_result["Direction"] = "NONE"
 
-    quote_result["Range"] = l_range
+    quote_result["Range"] = l_range.replace("$","").replace("\xa0","")
 
     quote_result["Open"] = l_open
     quote_result["PrevClose"] = p_close
@@ -409,18 +408,20 @@ def get_quote_message(code, region="HK", simpleMode=True):
         quote_result = get_cn_stock_quote(code)
     elif (region == "US"):
         try:
-            
-            quote_result = get_us_stock_quote(code)
-            isGoogle = False
 
-            #if (code.upper() in google_stock_quote.DICT_CURRENCY):
+            DICT_CURRENCY = {'BTC':'BTCUSD', 'EUR':'EURUSD', 'GBP':'GBPUSD', 'AUD':'AUDUSD', 'NZD':'NZDUSD', 'JPY':'USDJPY', 'CAD':'USDCAD', 'HKD':'USDHKD', 'CHF':'USDCHF', 'SGD':'USDSGD', 'CNY':'USDCNY', 'CNYHKD':'CNYHKD', 'EURGBP':'EURGBP','HKDJPY':'HKDJPY', 'EURHKD':'EURHKD', 'GBPHKD':'GBPHKD', 'AUDHKD':'AUDHKD'}
+
+            #if (code.upper() in DICT_CURRENCY):
+            #    fromCur = DICT_CURRENCY[code.upper()][0:3]
+            #    toCur = DICT_CURRENCY[code.upper()][3:6]
             #    return google_stock_quote.get_fx_quote_message(code)
-            #else:
-            #    quote_result = google_stock_quote.get_us_stock_quote(code)
-        except:
+            
+            # ordinary iex trading
             quote_result = get_us_stock_quote(code)
-            isGoogle = False
-    
+
+        except:
+            pass
+ 
     #print(quote_result)
     if (not quote_result):
         passage = "Result not found for " + code
@@ -484,17 +485,19 @@ def main():
 
     quote = get_us_stock_quote('AAPL')
     print(quote)
+
+    print(get_us_stock_quote('MSFT'))
     #quote = get_cn_stock_quote('000001')
     #quote = get_stock_quote('3054')
     #for key, value in quote.items():
     #    print(key, ":", value)
     #print(get_stock_quote_derivative('28497'))
     #print(get_stock_quote_derivative('60002'))
-    #print(get_quote_message('28497', "HK", False))
+    print(get_quote_message('13122', "HK", False))
     #print(get_quote_message('60002', "HK", False))
-    #print(get_quote_message('000001',"CN", False))
+    print(get_quote_message('000001',"CN", False))
  
-    #print(get_quote_message('136',"HK", False))
+    print(get_quote_message('136',"HK", False))
     print(get_quote_message('MSFT',"US", False))
     #print(get_quote_message('BTC',"US", False))
 

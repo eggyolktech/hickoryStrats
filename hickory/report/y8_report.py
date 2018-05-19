@@ -13,6 +13,7 @@ from bs4 import BeautifulSoup
 from hickory.util import config_loader, stock_util as su
 from hickory.crawler.aastocks import stock_quote, stock_info
 from hickory.db import stock_mag8_db, stock_us_mag8_db
+from market_watch.chief import options
 
 config = config_loader.load()
 period = "ALL"
@@ -24,7 +25,7 @@ def fdaysago(dateStr):
     now = datetime.datetime.now().date()
     difference =  (now - then) / timedelta(days=1)
 
-    return ('%.0f' % difference) + " days"
+    return ('%.0f' % difference) + "d"
 
 def fpct(lcp):
     
@@ -131,7 +132,7 @@ def generate(region="HK"):
           $(document).ready(function() {
             var table = $('table');
             
-            $('#1_header, #2_header, #3_header, #4_header, #4a_header, #5_header, #6_header, #7_header, #8_header, #9_header, #10_header, #11_header, #12_header, #13_header, #14_header, #15_header, #17_header, #18_header, #19_header, #20_header, #21_header, #22_header, #23_header')
+            $('#1_header, #2_header, #2a_header, #3_header, #4_header, #4a_header, #5_header, #6_header, #7_header, #8_header, #9_header, #10_header, #11_header, #12_header, #13_header, #14_header, #15_header, #17_header, #18_header, #19_header, #20_header, #21_header, #22_header, #23_header')
                 .wrapInner('<span title="Sort this column"/>')
                 .each(function(){
                     
@@ -153,11 +154,11 @@ def generate(region="HK"):
                             
                                 if (($.text([a]).includes('/') && $.text([b]).includes('/')) 
                                     || ($.text([a]).includes('(') && $.text([b]).includes('('))
-                                    || ($.text([a]).includes('days') && $.text([b]).includes('days'))) {
+                                    || ($.text([a]).includes('d') && $.text([b]).includes('d'))) {
                                 
-                                    //alert("[" + $.text([a]).split('/')[0].split('(')[0].replace("days", "").replace(/^\s+|\s+$/g, '') + "]")                 
-                                    ta = $.text([a]).split('/')[0].split('(')[0].replace("days", "").replace("-", "0").replace(/^\s+|\s+$/g, '')
-                                    tb = $.text([b]).split('/')[0].split('(')[0].replace("days", "").replace("-", "0").replace(/^\s+|\s+$/g, '')
+                                    //alert("[" + $.text([a]).split('/')[0].split('(')[0].replace("d", "").replace(/^\s+|\s+$/g, '') + "]")                 
+                                    ta = $.text([a]).split('/')[0].split('(')[0].replace("d", "").replace("-", "0").replace(/^\s+|\s+$/g, '')
+                                    tb = $.text([b]).split('/')[0].split('(')[0].replace("d", "").replace("-", "0").replace(/^\s+|\s+$/g, '')
                                 
                                     return parseFloat(ta) > parseFloat(tb) ? 
                                         inverse ? -1 : 1
@@ -210,12 +211,12 @@ def generate(region="HK"):
     
     stk_html = """<table class="table table-striped table-bordered table-hover table-condensed">
             <tr class="flink">
-                <th id="1_header">Code</th><th id="2_header">Name</th><th id="3_header">Last Close</th>
+                <th id="1_header">Code</th><th id="2_header">Name</th><th id="2a_header">Sector</th><th id="3_header">Last Close</th>
                 <th id="4_header">V/AV</th> <th id="4a_header">RoC</th><th id="6_header">PE</th>
                 <th id="8_header">1mC%</th><th id="9_header">3mC%</th><th id="10_header">1yC%</th><th id="11_header">1mRS%</th>
                 <th id="12_header">3mRS%</th><th id="13_header">1yRS%</th><th id="14_header">MktCap</th><th id="15_header">52WkLH</th>
-                <th id="17_header">3mVol</th><th id="18_header">ma30</th>
-                <th id="19_header">ma50</th><th id="20_header">ma150</th><th id="21_header">ma200</th><th id="22_header">macd Xup</th><th id="23_header">since</th>
+                <th id="17_header">3mVol</th><!--th id="18_header">ma30</th>
+                <th id="19_header">ma50</th><th id="20_header">ma150</th><th id="21_header">ma200</th--><th id="22_header">macd Xup</th><th id="23_header">since</th>
             </tr>
 
                 """
@@ -227,13 +228,17 @@ def generate(region="HK"):
         else:
             img_sup = ""
 
-
         if (region == "US"):
             surl = "https://finance.google.com/finance?q="
         else:
             surl = "http://aastocks.com/tc/stocks/analysis/company-fundamental/?symbol="
 
-        name_text = "<a href='" + surl + stock["CODE"] + "' target='_blank'>" + stock["stockname"] + "</a>" + img_sup
+        if (options.is_option_code(stock["CODE"])):
+            img_option = "<img src='https://33qpzx1dk8tt1qlds735ez93-wpengine.netdna-ssl.com/wp-content/uploads/2016/10/op-256x256.png' width='15' style='vertical-align: top'/>"
+        else:
+            img_option = ""
+
+        name_text = "<a href='" + surl + stock["CODE"] + "' target='_blank'>" + stock["stockname"] + "</a>" + img_sup + img_option
     
         lcp = stock["LAST_CHANGE_PCT"]
         lvr = stock["LAST_VOL_RATIO"]
@@ -261,7 +266,7 @@ def generate(region="HK"):
             macd_div = "-"
 
         if (region == "US"):
-            stock["MARKET_CAPITAL"] = 0.00
+            stock["MKT_CAP"] = 0.00
 
         if (stock["MACD_X_OVER_DATE"] and not stock["MACD_X_OVER_DATE"] == "-"):
             macd_text = fdaysago(stock["MACD_X_OVER_DATE"]) + " (" + macd_div + ")"
@@ -269,13 +274,25 @@ def generate(region="HK"):
             macd_text = macd_text + " (" + macd_div + ")"
         row_text = """<tr style='""" + style_bg + """'>
                       <td><a name='%s'/><a href="/streaming.html?code=%s" target="_blank">%s</a></td>
-                      <td class='text-nowrap'>%s</td><td>%s</td>
+                      <td class='text-nowrap'>%s</td><td>%s</td><td>%s</td>
                       <td>%s</td><td>%s</td>
                       <td>%s</td><td>%s</td><td>%s</td><td>%s</td>
                       <td>%s</td><td>%s</td><td>%s</td><td>%s</td>
-                      <td>%s</td><td>%s</td><td>%s</td>
-                      <td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td>
-                  </tr>""" % (stock["CODE"], stock["CODE"], stock["CODE"], name_text, str(stock["LAST_CLOSE"]) + " /" + fpct(lcp).strip(), vol_ratio, "%.2f" % stock["Y8_ROC_MARK"] ,stock["PE"], fnum(stock["_1MONTH_CHANGE"]), fnum(stock["_3MONTH_CHANGE"]), fnum(stock["_52WEEK_CHANGE"]), fnum(stock["_1MONTH_HSI_RELATIVE"]), fnum(stock["_3MONTH_HSI_RELATIVE"]), fnum(stock["_52WEEK_HSI_RELATIVE"]), su.rf2s(stock["MARKET_CAPITAL"]), str(stock["_52WEEK_LOW"]) + " - " + str(stock["_52WEEK_HIGH"]), su.rf2s(stock["_3MONTH_AVG_VOL"]), su.rfNum(stock["_30_DAY_MA"], 2), su.rfNum(stock["_50_DAY_MA"], 2), su.rfNum(stock["_150_DAY_MA"], 2), su.rfNum(stock["_200_DAY_MA"], 2), macd_text, fdaysago(stock["Y8_ENTRY_DATE"]))
+                      <td>%s</td><td>%s</td><!--td>%s</td>
+                      <td>%s</td><td>%s</td><td>%s</td--><td>%s</td><td>%s</td>
+                  </tr>""" % (stock["CODE"], stock["CODE"], stock["CODE"], name_text, 
+                stock["INDUSTRY_LV2"], str(stock["LAST_CLOSE"]) + " /" + fpct(lcp).strip(), vol_ratio, 
+                "%.2f" % stock["Y8_ROC_MARK"] ,stock["PE"], fnum(stock["_1MONTH_CHANGE"]), 
+                fnum(stock["_3MONTH_CHANGE"]), fnum(stock["_52WEEK_CHANGE"]), fnum(stock["_1MONTH_HSI_RELATIVE"]), 
+                fnum(stock["_3MONTH_HSI_RELATIVE"]), fnum(stock["_52WEEK_HSI_RELATIVE"]), 
+                su.rf2s(stock["MKT_CAP"]), str(stock["_52WEEK_LOW"]) + " - " + str(stock["_52WEEK_HIGH"]), 
+                su.rf2s(stock["_3MONTH_AVG_VOL"]), 
+                su.rfNum(stock["_30_DAY_MA"], 2), su.rfNum(stock["_50_DAY_MA"], 2), 
+                su.rfNum(stock["_150_DAY_MA"], 2), su.rfNum(stock["_200_DAY_MA"], 2),
+                macd_text, fdaysago(stock["Y8_ENTRY_DATE"]))
+
+                #su.rfNum(stock["_30_DAY_MA"], 2), su.rfNum(stock["_50_DAY_MA"], 2), 
+                #su.rfNum(stock["_150_DAY_MA"], 2), su.rfNum(stock["_200_DAY_MA"], 2),
 
         stk_html = stk_html + row_text
  

@@ -100,3 +100,5 @@ config.properties
 
 # db files
 
+# v20 files
+.v20.conf

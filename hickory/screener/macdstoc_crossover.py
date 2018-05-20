@@ -632,15 +632,15 @@ if __name__ == "__main__":
         tf = TimeFrame.WEEKLY
 
     # For retrieveing HKEX Full Stock List
-    #slist = None
-    #try:
-    #    slist = securities_list.get_stock_json()
-    #except:
-    #    slist = securities_list.get_stock_json()
+    slist = None
+    try:
+        slist = securities_list.get_stock_json()
+    except:
+        slist = securities_list.get_stock_json()
     
-    #if (slist):
-    #    with open('../data/list_HKEXList.json', 'w') as the_file:
-    #        the_file.write(slist)
+    if (slist):
+        with open('../data/list_HKEXList.json', 'w') as the_file:
+            the_file.write(slist)
 
     jsonlist = [ 
         #'../data/list_IndustryList.json',

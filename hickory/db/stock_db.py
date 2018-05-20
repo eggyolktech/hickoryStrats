@@ -30,6 +30,21 @@ def init():
 
     conn.close()
 
+def get_stocks_list():
+
+    conn = sqlite3.connect(DB_FILE)
+    stocks_list = []
+
+    for col in conn.execute("SELECT CODE, NAME FROM STOCKS ORDER BY CODE ASC"):
+        
+        stock_dict = {}
+        stock_dict["code"] = col[0].lstrip("0")
+        stock_dict["label"] = col[1].strip()
+        stocks_list.append(stock_dict)
+
+    conn.close()
+    return stocks_list
+
 def list_stocks():
     
     conn = sqlite3.connect(DB_FILE)
@@ -147,6 +162,8 @@ def main(args):
 
     for code in ['1','2','2800','87001','87002']:
         print(is_stock_exist(code))
+
+    print(get_stocks_list())
  
 if __name__ == "__main__":
     main(sys.argv[1:])        

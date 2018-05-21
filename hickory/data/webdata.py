@@ -48,7 +48,8 @@ def DataReader(symbol, datasrc, start, end):
 
         if (len(bars) <= 50):
             #print("Issue in Yahoo API, switching to use Google")
-            bars = retrieve_bars_data_from_google(symbol)
+            #bars = retrieve_bars_data_from_google(symbol)
+            bars = None
         #except:
         #       
     elif (datasrc == "google"):

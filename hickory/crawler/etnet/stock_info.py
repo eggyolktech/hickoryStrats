@@ -28,21 +28,29 @@ def get_info(code):
     soup = BeautifulSoup(html, "html.parser")
    
     rows  = soup.find("div", {"id": "content"}).findAll("table")[2].find("tbody").findAll("tr")
-    
-    month_high = rows[2].findAll("td")[1].text
-    volume = rows[2].findAll("td")[3].text
-    month_low = rows[3].findAll("td")[1].text
-    turnover = rows[3].findAll("td")[3].text      
-    week_high = rows[4].findAll("td")[1].text   
-    short_amount = rows[4].findAll("td")[3].text   
-    week_low = rows[5].findAll("td")[1].text   
-    ma_10 = rows[5].findAll("td")[3].text
-    ma_20 = rows[6].findAll("td")[3].text
-    ma_50 = rows[7].findAll("td")[3].text
-    ma_250 = rows[8].findAll("td")[3].text
-    rsi_14 = rows[9].findAll("td")[3].text
-    gain_10 = rows[10].findAll("td")[3].text
-    
+   
+    print(rows) 
+    stk_month_high = rows[2].findAll("td")[1].text
+    print("AAA%s " % stk_month_high)
+    stk_volume = rows[2].findAll("td")[3].text
+    stk_month_low = rows[3].findAll("td")[1].text
+    stk_turnover = rows[3].findAll("td")[3].text      
+    stk_week_high = rows[4].findAll("td")[1].text   
+    stk_short_amount = rows[4].findAll("td")[3].text   
+    stk_week_low = rows[5].findAll("td")[1].text   
+    stk_ma_10 = rows[5].findAll("td")[3].text
+    stk_ma_20 = rows[6].findAll("td")[3].text
+    stk_ma_50 = rows[7].findAll("td")[3].text
+    stk_ma_250 = rows[8].findAll("td")[3].text
+    stk_rsi_14 = rows[9].findAll("td")[3].text
+    stk_gain_10 = rows[10].findAll("td")[3].text
+
+    ldict = locals()   
+
+    for key in ldict:
+        if ("stk_" in key):
+            info[key] = ldict[key]
+
     return info
 
 def main():

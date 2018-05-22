@@ -33,12 +33,18 @@ def get_stocks_tech(codes):
         options = Options()  
         options.add_experimental_option("excludeSwitches",["ignore-certificate-errors"])
         options.add_argument('--disable-gpu')
-        #options.add_argument('--headless')
+        options.add_argument('--headless')
         browser = webdriver.Chrome(executable_path="C:\Wares\chromedriver.exe", chrome_options=options)  
     else:
-        browser = webdriver.PhantomJS() 
+        options = Options()  
+        options.add_experimental_option("excludeSwitches",["ignore-certificate-errors"])
+        options.add_argument('--disable-gpu')
+        #options.add_argument('--no-sandbox')
+        options.add_argument('--headless')
+        browser = webdriver.Chrome(executable_path="/usr/local/bin/chromedriver", chrome_options=options)  
 
     url = "http://www.etnet.com.hk/www/tc/stocks/realtime/quote_super.php" 
+    url = "http://www.google.com"
     browser.get(url)  
     
     try:
@@ -104,7 +110,7 @@ def get_stocks_tech(codes):
 
 def main():
 
-    codes_list = stock_mag8_db.get_mag8_stocks_list()[:20]:
+    codes_list = stock_mag8_db.get_mag8_stocks_list()[:20]
     print(codes_list)
     print(get_stocks_tech(codes_list))
     

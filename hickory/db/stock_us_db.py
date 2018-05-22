@@ -16,6 +16,7 @@ def init():
        (ID INTEGER PRIMARY KEY AUTOINCREMENT,
        CODE               TEXT    NOT NULL,
        NAME               TEXT    NOT NULL,
+       DESC               TEXT    NOT NULL,
        INDUSTRY_LV1       TEXT    NOT NULL,
        INDUSTRY_LV2       TEXT    NOT NULL,
        SINCE              TEXT    NOT NULL,
@@ -35,7 +36,7 @@ def list_stocks():
 
     conn.close()
 
-def manage_stock(code, name, industryLv1, industryLv2, since, exchange):
+def manage_stock(code, name, desc, industryLv1, industryLv2, since, exchange):
 
     conn = sqlite3.connect(DB_FILE)
 
@@ -44,14 +45,14 @@ def manage_stock(code, name, industryLv1, industryLv2, since, exchange):
     
     # There is record already
     if (cursor.fetchone()):
-        t = (name, industryLv1, industryLv2, since, exchange, code)
+        t = (name, desc, industryLv1, industryLv2, since, exchange, code)
         conn.execute("UPDATE STOCKS_US SET NAME=?, INDUSTRY_LV1=?, INDUSTRY_LV2=?,  SINCE=?, EXCHANGE=? WHERE CODE=?", t)
         conn.commit()
         conn.close()
         return True
     # Blank new case
     else:
-        t = (code, name, industryLv1, industryLv2, since, exchange)
+        t = (code, desc, name, industryLv1, industryLv2, since, exchange)
         conn.execute("INSERT INTO STOCKS_US (CODE, NAME, INDUSTRY_LV1, INDUSTRY_LV2, SINCE, EXCHANGE) VALUES (?, ?, ?, ?, ?, ?)", t)
         conn.commit()
         conn.close()

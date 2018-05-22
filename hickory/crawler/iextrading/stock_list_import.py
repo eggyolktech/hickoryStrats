@@ -97,7 +97,7 @@ def parse_list():
             # add if only industry is defined
             if (comp['sector']): 
             
-                if (stock_us_db.manage_stock(stk['symbol'], stk['name'], comp['description'], comp['sector'], comp['industry'], None, comp['exchange'])):
+                if (stock_us_db.manage_stock(stk['symbol'], stk['name'], comp['description'], comp['sector'], comp['industry'], "NA", comp['exchange'])):
                     print("%s. %s [%s > %s] is added/updated" % (num, stk['symbol'], comp['sector'], comp['industry']))
                     num = num + 1              
                 else:

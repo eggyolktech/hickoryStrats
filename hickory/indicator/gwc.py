@@ -5,7 +5,6 @@ import pandas as pd
 import datetime
 from datetime import tzinfo, timedelta, datetime
 import time
-import resource
 import os
 
 import traceback

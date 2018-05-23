@@ -12,15 +12,18 @@ import locale
 import concurrent.futures
 import time
 from datetime import tzinfo, timedelta, datetime
-from hickory.util import config_loader, stock_util, mem_util
+from hickory.util import config_loader, stock_util
 from hickory.crawler.aastocks import stock_quote, stock_info
 from hickory.crawler.google import stock_quote as google_stock_quote
 from hickory.db import stock_us_tech_db, stock_us_sector_db, stock_us_mag8_db
 from hickory.report import sector_us_heatmap, y8_report, v8_report
 from hickory.indicator import gwc
 from hickory.data import webdata
-import random
 
+if (not os.name == 'nt'):
+    from hickory.util import mem_util
+
+import random
 import traceback
 import logging
 
@@ -180,9 +183,9 @@ def get_index_metrics():
     end = datetime.today()
     randays = random.randint(1,20)
     start = end - timedelta(days=(1*400 + randays))
-    ycode = "%5ERUA"
+    ycode = "%5EGSPC"
     bars = webdata.DataReader(ycode, "yahoo_direct", start, end)
-    #print(bars)
+    print(bars)
 
     firstclose = bars.iloc[0]['Close']
     lastclose = bars.iloc[-1]['Close']
@@ -200,7 +203,12 @@ def get_index_metrics():
 
 def generate_TECH_MT(num_workers=1):
 
-    conn = sqlite3.connect("/app/hickoryStrats/hickory/db/stock_us_db.dat")
+    if (not os.name == 'nt'):
+        dbfile = "/app/hickoryStrats/hickory/db/stock_us_db.dat"
+    else:
+        dbfile = "C:\\Users\\Hin\\eggyolktech\\hickoryStrats\\hickory\\db\\stock_us_db.dat"
+
+    conn = sqlite3.connect(dbfile)
     conn.row_factory = sqlite3.Row
     c = conn.cursor()
     c.execute("select * from stocks_us order by code asc")
@@ -256,7 +264,8 @@ def generate_VOL_MT(stocks, num_workers=1):
 
 def main(args):
 
-    mem_util.set_max_mem(50)
+    if (not os.name == 'nt'):
+        mem_util.set_max_mem(50)
     start_time = time.time()
     NO_OF_WORKER = 4 
 

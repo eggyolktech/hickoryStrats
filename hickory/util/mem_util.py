@@ -2,7 +2,6 @@
 
 import resource
 
-
 def set_max_mem(max_mem):
 
     #set resource limit

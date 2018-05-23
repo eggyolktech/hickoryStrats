@@ -46,14 +46,14 @@ def manage_stock(code, name, desc, industryLv1, industryLv2, since, exchange):
     # There is record already
     if (cursor.fetchone()):
         t = (name, desc, industryLv1, industryLv2, since, exchange, code)
-        conn.execute("UPDATE STOCKS_US SET NAME=?, INDUSTRY_LV1=?, INDUSTRY_LV2=?,  SINCE=?, EXCHANGE=? WHERE CODE=?", t)
+        conn.execute("UPDATE STOCKS_US SET NAME=?, DESC=?, INDUSTRY_LV1=?, INDUSTRY_LV2=?,  SINCE=?, EXCHANGE=? WHERE CODE=?", t)
         conn.commit()
         conn.close()
         return True
     # Blank new case
     else:
         t = (code, desc, name, industryLv1, industryLv2, since, exchange)
-        conn.execute("INSERT INTO STOCKS_US (CODE, NAME, INDUSTRY_LV1, INDUSTRY_LV2, SINCE, EXCHANGE) VALUES (?, ?, ?, ?, ?, ?)", t)
+        conn.execute("INSERT INTO STOCKS_US (CODE, NAME, DESC, INDUSTRY_LV1, INDUSTRY_LV2, SINCE, EXCHANGE) VALUES (?, ?, ?, ?, ?, ?, ?)", t)
         conn.commit()
         conn.close()
         return True

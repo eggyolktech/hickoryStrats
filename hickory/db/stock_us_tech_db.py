@@ -124,7 +124,7 @@ def manage_stock_tech(stock_tuple):
         conn.execute(s, t)
         conn.commit()
         conn.close()
-        print("[" + stock_tuple[0] + "] TECH INFO UPDATED - " + stock_tuple[1])
+        print("[" + str(stock_tuple[0]) + "] TECH INFO UPDATED - " + str(stock_tuple[1]))
         return True
     # Blank new case
     else:
@@ -134,7 +134,7 @@ def manage_stock_tech(stock_tuple):
         conn.execute("INSERT INTO STOCKS_US_TECH (CODE, EPS, PE, DPS, YIELD, _1MONTH_CHANGE, _3MONTH_CHANGE, _52WEEK_CHANGE, _1MONTH_HSI_RELATIVE, _3MONTH_HSI_RELATIVE, _52WEEK_HSI_RELATIVE, MARKET_CAPITAL, _52WEEK_HIGH, _52WEEK_LOW, _1MONTH_AVG_VOL, _3MONTH_AVG_VOL, LAST_CLOSE, _1MONTH_AVG_TURNOVER, _3MONTH_AVG_TURNOVER, _10_DAY_MA, _50_DAY_MA, _90_DAY_MA, _250_DAY_MA, _30_DAY_MA, _100_DAY_MA, _150_DAY_MA, _200_DAY_MA, _3MONTH_CLOSE, _6MONTH_CLOSE, _9MONTH_CLOSE, _12MONTH_CLOSE, Y8_ROC_MARK) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", t)
         conn.commit()
         conn.close()
-        print("[" + stock_tuple[0] + "] TECH INFO INSERTED - " + stock_tuple[1])
+        print("[" + str(stock_tuple[0]) + "] TECH INFO INSERTED - " + str(stock_tuple[1]))
         return True
 
 def update_stock_macd(code, macd_date, divergence):

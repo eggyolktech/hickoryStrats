@@ -16,6 +16,8 @@ def is_float(s):
 
 def rf(text):
 
+    text = str(text)
+
     if (text == "-"):
         return None
     else:

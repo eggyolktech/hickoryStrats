@@ -52,7 +52,7 @@ def manage_stock(code, name, desc, industryLv1, industryLv2, since, exchange):
         return True
     # Blank new case
     else:
-        t = (code, desc, name, industryLv1, industryLv2, since, exchange)
+        t = (code, name, desc, industryLv1, industryLv2, since, exchange)
         conn.execute("INSERT INTO STOCKS_US (CODE, NAME, DESC, INDUSTRY_LV1, INDUSTRY_LV2, SINCE, EXCHANGE) VALUES (?, ?, ?, ?, ?, ?, ?)", t)
         conn.commit()
         conn.close()

@@ -48,11 +48,9 @@ def DataReader(symbol, datasrc, start, end):
         if (len(bars) <= 50):
             #print("Issue in Yahoo API, switching to use Google")
             #bars = retrieve_bars_data_from_google(symbol)
-            bars = None
+            pass
         #except:
         #       
-    elif (datasrc == "google"):
-        bars = retrieve_bars_data_from_google(symbol)
     else:
         bars = retrieve_bars_data_from_yahoo(symbol, datasrc, start, end)
 
@@ -90,97 +88,33 @@ def retrieve_bars_data_from_yahoo(symbol, datasrc, start, end):
         url = 'https://query1.finance.yahoo.com/v7/finance/download/'  + symbol + '?period1=' + start_epoch + '&period2=' + end_epoch + '&interval=1d&events=history&crumb=' + crumb
         
         response = requests.get(url, cookies=cookies)
-        print("url: " + url);
+        #print("url: " + url);
         #print(response.content.decode("utf-8"))
 
         df = pd.read_csv(io.StringIO(response.content.decode("utf-8")), header=0, sep=',', index_col=0)
 
         # Converting the index as date
         df.index = pd.to_datetime(df.index)
+        lidx = len(df.index) > 0
 
+        if lidx > 0:
+            df = df[df['Open'].notnull()]
+        
         # Only required if df is not float64 type
         if( len(df.index) > 0 and df.Open.dtype != "float64"):
-            df = df[df.Open != "null"]
             df[['Open', 'High', 'Low', 'Close', 'Adj Close', 'Volume']] = df[['Open', 'High', 'Low', 'Close', 'Adj Close', 'Volume']].apply(pd.to_numeric)
 
             if(not "=" in symbol):
                 df = df[df.Volume > 0]
-
         elif (len(df.index) == 0):
-            #print("No historical data for code: [" + symbol + "]")
+            print("No historical data for code: [" + symbol + "]")
             raise ValueError
 
-        #print(df.Open.values)
+        #print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
+        #print(df.head())
         #print(df.to_string())
         #print(df.tail())
         return df
-
-def retrieve_bars_data_from_google(code):
-
-    if (code[0] == "0"):
-        code = code[1:]
-
-    if (".HK" in code):
-        code = code.replace(".HK","")
-
-    if (is_number(code)):
-        code = "HKG:" + code.rjust(4, '0')
-    else:
-        code = code.upper()
-
-    #print("Retrieved Data from Google for code: [" + code + "]")
-    url1 = 'http://www.google.com.hk/finance/historical?q=' + code + '&num=200&start=0'
-    url2 = 'http://www.google.com.hk/finance/historical?q=' + code + '&num=200&start=200'
-    r1 = urllib.request.urlopen(url1)
-    r2 = urllib.request.urlopen(url2)
-    soup = BeautifulSoup(r1, "html5lib")
-    tabulka = soup.find("table", {"class" : "gf-table historical_price"})
-
-    soup = BeautifulSoup(r2, "html5lib")
-    tabulkb = soup.find("table", {"class" : "gf-table historical_price"})
-
-    if not os.name == 'nt':
-        csvfilename = "/tmp/histdata/" + code.replace(":", "") + '.csv'
-    else:
-        csvfilename = "C:\\Temp\\histdata\\" + code.replace(":", "") + '.csv'
-
-    with open(csvfilename, 'w') as csvfile:
-
-        fieldnames = ['Date', 'Open', 'High', 'Low', 'Close', 'Volume']
-        writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
-        writer.writeheader()
-
-        for row in tabulka.findAll('tr')[1:]:
-            col = row.findAll('td')
-            date = col[0].string.strip()
-            sopen = col[1].string.replace(",", "").strip()
-            high = col[2].string.replace(",", "").strip()
-            low = col[3].string.replace(",", "").strip()
-            close = col[4].string.replace(",", "").strip()
-            volume = col[5].string.replace(",", "").strip()
-
-            #print(",".join([date, sopen, high, low, close, volume]))
-            writer.writerow({'Date': date, 'Open': sopen, 'High': high, 'Low': low, 'Close': close, 'Volume': volume})
-
-        if (tabulkb and len(tabulkb.findAll('tr')) > 0):
-            for row in tabulkb.findAll('tr')[1:]:
-                col = row.findAll('td')
-                date = col[0].string.strip()
-                sopen = col[1].string.replace(",", "").strip()
-                high = col[2].string.replace(",", "").strip()
-                low = col[3].string.replace(",", "").strip()
-                close = col[4].string.replace(",", "").strip()
-                volume = col[5].string.replace(",", "").strip()
-
-                #print(",".join([date, sopen, high, low, close, volume]))
-                writer.writerow({'Date': date, 'Open': sopen, 'High': high, 'Low': low, 'Close': close, 'Volume': volume})
-
-    df = pd.DataFrame.from_csv(csvfilename, header=0, sep=',', index_col=0)
-    df.sort_index(inplace=True)
-
-    #print(df.head())
-    return df
-
 
 def main():
 

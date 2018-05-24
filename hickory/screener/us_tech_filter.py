@@ -13,8 +13,7 @@ import concurrent.futures
 import time
 from datetime import tzinfo, timedelta, datetime
 from hickory.util import config_loader, stock_util
-from hickory.crawler.aastocks import stock_quote, stock_info
-from hickory.crawler.google import stock_quote as google_stock_quote
+from hickory.crawler.iextrading import stock_quote 
 from hickory.db import stock_us_tech_db, stock_us_sector_db, stock_us_mag8_db
 from hickory.report import sector_us_heatmap, y8_report, v8_report
 from hickory.indicator import gwc
@@ -27,20 +26,17 @@ import random
 import traceback
 import logging
 
-LIMIT = 3000
+LIMIT = 7000 
 
-logging.basicConfig(filename='../log/manageUSStockTech.log',level=logging.WARNING)
+#logging.basicConfig(filename='../log/manageUSStockTech.log',level=logging.WARNING)
+logging.basicConfig(stream=sys.stdout, level=logging.INFO)
 
 config = config_loader.load()
 
 def get_stock_quote(code):
 
-    # get basic attr
-    qr = google_stock_quote.get_us_stock_quote("NYSE:" + code)
-   
-    if (not qr):
-        qr = stock_quote.get_us_stock_quote(code)
-        #print(qr)
+    qr = stock_quote.get_us_stock_quote(code)
+    #print(qr)
 
     return qr
 
@@ -50,6 +46,10 @@ def manageStockTech(code, idm):
     #    return True
     
     qr = get_stock_quote(code)
+
+    if not qr:
+        print("Stock Quote Not Found for [%s]" % code)
+        return False
 
     # get tech info
     end = datetime.today()
@@ -64,7 +64,8 @@ def manageStockTech(code, idm):
     pd.options.mode.chained_assignment = None  # default='warn'
 
     signals['close'] = bars['Close']
-    bars['Volume'] = bars['Volume'].replace('null', 0)
+    bars['Volume'].fillna(0, inplace=True)
+    #bars['Volume'] = bars['Volume'].replace('null', 0)
     signals['vol'] = bars['Volume']
     signals['turnover'] = bars['Close'] * bars['Volume'].astype(float)
 
@@ -113,8 +114,9 @@ def manageStockTech(code, idm):
     _3mth_hsi_relative = (_3mth_change - _3mth_idx_change)
     _52week_hsi_relative = (_52week_change - _52week_idx_change)
 
-    mktCap = get_us_stock_mktcap(code)
-
+    mktCap = stock_util.rf(qr["MktCap"])
+    print("======= %s" % qr["MktCap"])
+    print(mktCap)  
     df = signals.tail(1)
     latest = df.iloc[0]
     f = "%.4f"
@@ -132,8 +134,8 @@ def manageStockTech(code, idm):
     syield = qr["Yield"] if "Yield" in qr else None
     eps = qr["EPS"] if "EPS" in qr else None
     pe = qr["PE"] if "PE" in qr else None
-    wkLow = None if qr["52WeekLow"] == "N/A" else qr["52WeekLow"].replace(",","")
-    wkHigh = None if qr["52WeekHigh"] == "N/A" else qr["52WeekHigh"].replace(",","")
+    wkLow = qr["52WeekLow"]
+    wkHigh = qr["52WeekHigh"]
     
     st = (code,
           eps,
@@ -172,12 +174,6 @@ def manageStockTech(code, idm):
     result = stock_us_tech_db.manage_stock_tech(st)
     return result
 
-def get_us_stock_mktcap(symbol):
-
-    url = "http://download.finance.yahoo.com/d/quotes.csv?s=%s&f=j1" % symbol
-    data = requests.get(url).text
-    return stock_util.rf(data.rstrip('\r\n'))
-
 def get_index_metrics():
 
     end = datetime.today()
@@ -185,7 +181,7 @@ def get_index_metrics():
     start = end - timedelta(days=(1*400 + randays))
     ycode = "%5EGSPC"
     bars = webdata.DataReader(ycode, "yahoo_direct", start, end)
-    print(bars)
+    #print(bars)
 
     firstclose = bars.iloc[0]['Close']
     lastclose = bars.iloc[-1]['Close']
@@ -214,9 +210,7 @@ def generate_TECH_MT(num_workers=1):
     c.execute("select * from stocks_us order by code asc")
     rows = c.fetchall()
     idm = get_index_metrics()   
-    idm = [1,2,3]   
-
-    webdata.reset_cookies_and_crumb()
+    #webdata.reset_cookies_and_crumb()
 
     # We can use a with statement to ensure threads are cleaned up promptly
     with concurrent.futures.ThreadPoolExecutor(max_workers=num_workers) as executor:
@@ -227,10 +221,13 @@ def generate_TECH_MT(num_workers=1):
             row = future_to_manage[future]
             try:
                 data = future.result()
+            except ValueError:
+                print("Data retrieving Error: " + row["code"])
+                pass
             except Exception as exc:
                 print('%r generated an exception: %s' % (row["code"], exc))
-                logging.error(" Error retrieving code: " + row["code"])
-                logging.error(traceback.format_exc())
+                print("Error retrieving code: " + row["code"])
+                print(traceback.format_exc())
             else:
                 if (data == False):
                     print('%r result is %s' % (row["code"], data))    
@@ -238,10 +235,13 @@ def generate_TECH_MT(num_workers=1):
 def manageStockVol(code):
     
     st = get_stock_quote(code)
-
-    print(code + " - " + st["Close"] + "/" + st["ChangePercent"] + "/" +  st["Volume"])
-    result = stock_us_tech_db.update_stock_vol(code, st["Close"], st["ChangePercent"], stock_util.rf(st["Volume"]))
-    return result
+    if (st):
+        print(code + " - " + str(st["Close"]) + "/" + str(st["ChangePercent"]) + "/" +  str(st["Volume"]))
+        result = stock_us_tech_db.update_stock_vol(code, st["Close"], st["ChangePercent"], stock_util.rf(st["Volume"]))
+        return result
+    else:
+        print(code + " - Quote not found....!")
+        return False
 
 
 def generate_VOL_MT(stocks, num_workers=1):
@@ -270,7 +270,7 @@ def main(args):
     if (not os.name == 'nt'):
         mem_util.set_max_mem(50)
     start_time = time.time()
-    NO_OF_WORKER = 1 
+    NO_OF_WORKER = 4 
 
     if (len(args) > 1 and args[1] == "gen_tech"):
         generate_TECH_MT(NO_OF_WORKER)
@@ -285,10 +285,11 @@ def main(args):
         v8_report.generate("US")
     else:
         print("OPTS: gen_tech | gen_vol | gen_all_vol")
-        print(get_index_metrics())
-        print(get_us_stock_mktcap("AAPL"))
-        print(get_us_stock_mktcap("JPM"))
-        #print(manageStockTech("00923"))
+        idm = get_index_metrics()
+        #print(get_stock_quote("AAPL"))
+        #print(get_us_stock_mktcap("AAPL"))
+        #print(get_us_stock_mktcap("JPM"))
+        print(manageStockTech("WMAR", idm))
         #print(manageStockVol("612"))
 
     #generate()

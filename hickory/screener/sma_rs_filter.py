@@ -112,7 +112,7 @@ def main(args):
         v8_report.generate()
     else:
         print("OPTS: gen_tech | gen_vol | gen_y8_vol | gen_all_vol")
-        print(manageStockTech("00923"))
+        print(manageStockTech("00189"))
         #print(manageStockVol("612"))
 
     #generate()

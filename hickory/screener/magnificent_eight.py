@@ -61,23 +61,26 @@ def manageStockInd(code):
     lastclose = bars.iloc[-1]['Close']
     lb = len(bars)
 
+    #print(bars.to_string())
+
     _3mclose = bars.iloc[lb-63]['Close'] if lb > 63 else firstclose
     _6mclose = bars.iloc[lb-126]['Close'] if lb > 126 else firstclose
     _9mclose = bars.iloc[lb-189]['Close'] if lb > 189 else firstclose
     _12mclose = bars.iloc[lb-252]['Close'] if lb > 252 else firstclose
-    print(code + "-" + str(lastclose))
+    #print(lb, bars.iloc[lb-252]['Close'])
+    print(code + "-" + str(lastclose), str(_3mclose), str(_6mclose), str(_9mclose), str(_12mclose))
     print(code + "-" + str(lastclose/_3mclose), str(lastclose/_6mclose), str(lastclose/_9mclose), str(lastclose/_12mclose))
 
     roc_mark = (2*(lastclose/_3mclose)) + (lastclose/_6mclose) + (lastclose/_9mclose) + (lastclose/_12mclose)
     
-    #print(len(bars))
+    #print("$$$$$$$$$$$" + str(roc_mark))
     #print(len(signals))
     #print(signals.head(50))  
     df = signals.tail(1)
     di = df.iloc[0]
     f = "%.4f"
     st = (code, f % di['sma30'], f % di['sma100'], f % di['sma150'], f % di['sma200'], _3mclose, _6mclose, _9mclose, _12mclose, roc_mark)
-    #print(st)
+    print(st)
     
     result = stock_tech_db.manage_stock_tech(st, True)
     #result = True
@@ -119,7 +122,8 @@ def main(args):
         y8_report.generate()    
     else:
         print("OPTS: gen_ind")
-        for stock in ("00612", "01918", "00581"):
+        for stock in ("00189", "01918", "00581"):
+        #for stock in ("00189"):
             print(manageStockInd(stock))
 
     print("Time elapsed: " + "%.3f" % (time.time() - start_time) + "s")

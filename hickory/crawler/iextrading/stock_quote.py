@@ -47,24 +47,35 @@ def get_us_stock_quote(code):
     if quote_obj["high"] == None: quote_obj["high"] = 0
    
     l_range = str("%.2f - %.2f " % (quote_obj["low"], quote_obj["high"]))
-    l_open = str(quote_obj["open"])
-    l_close = str(quote_obj["iexRealtimePrice"])
+    l_open = quote_obj["open"] if quote_obj["open"] else 0
+    l_close = quote_obj["iexRealtimePrice"] if quote_obj["iexRealtimePrice"] else 0
     
-    if (l_close.strip() == "None" or l_close.strip() == "0" ):
-        l_close = str(quote_obj["close"])
- 
-    last_update = str(datetime.fromtimestamp(quote_obj["latestUpdate"]/1000.0).strftime('%Y-%m-%d %H:%M:%S'))
+    if (l_close == 0 ):
+        l_close = quote_obj["close"] if quote_obj["close"] else 0
 
-    change_val = str(quote_obj["change"])
-    change_pct = ("%.2f" % (quote_obj["changePercent"]*100)) + "%"
-    
+    if (quote_obj["latestUpdate"]): 
+        last_update = str(datetime.fromtimestamp(quote_obj["latestUpdate"]/1000.0).strftime('%Y-%m-%d %H:%M:%S'))
+    else:
+        last_update = None
+
+    change_val = quote_obj["change"] if quote_obj["change"] else 0
+    quote_obj["changePercent"] = quote_obj["changePercent"] if quote_obj["changePercent"] else 0
+ 
+    if quote_obj["changePercent"]:
+        change_pct = ("%.2f" % (quote_obj["changePercent"]*100)) + "%"
+    else:
+        change_pct = 0
+
     volume = str(quote_obj["latestVolume"])
     mean_vol = str(quote_obj["avgTotalVolume"])
 
     if (mean_vol):
         f_vol_now = stock_util.rf(volume)
         f_vol_avg = stock_util.rf(mean_vol)
-        quote_result["V2V"] = "%.2f" % (float(f_vol_now) / float(f_vol_avg))
+        quote_result["V2V"] = 0
+        
+        if float(f_vol_avg) > 0:
+            quote_result["V2V"] = "%.2f" % (float(f_vol_now) / float(f_vol_avg))
 
     if ("0.00" in volume):
         turnover = "N/A"
@@ -95,14 +106,14 @@ def get_us_stock_quote(code):
     quote_result["ChangeVal"] = change_val
     quote_result["ChangePercent"] = change_pct
 
-    if ("-" in quote_result["ChangeVal"]):
+    if (quote_result["ChangeVal"] < 0):
         quote_result["Direction"] = "DOWN"
-    elif (quote_result["ChangeVal"] == "0"):
+    elif (quote_result["ChangeVal"] == 0):
         quote_result["Direction"] = "NONE"
     else:
         quote_result["Direction"] = "UP"
-        quote_result["ChangeVal"] = "+" + quote_result["ChangeVal"]
-        quote_result["ChangePercent"] = "+" + quote_result["ChangePercent"]
+        quote_result["ChangeVal"] = "+" + str(quote_result["ChangeVal"])
+        quote_result["ChangePercent"] = "+" + str(quote_result["ChangePercent"])
     
     quote_result["MktCap"] = mkt_cap
 
@@ -147,7 +158,7 @@ def get_quote_message(code, region="US", simpleMode=True):
             direction = u'\U0001F53B'
 
         passage = "<b>" + quote_result["CodeName"] + "</b>" + " (" + code.upper() + ")" + EL
-        passage = passage + direction + "" + "$%.3f" % float(quote_result["Close"]) + " (" + quote_result["ChangeVal"] + "/" + quote_result["ChangePercent"] + ")" + EL
+        passage = passage + direction + "" + "$%.3f" % float(quote_result["Close"]) + " (" + str(quote_result["ChangeVal"]) + "/" + str(quote_result["ChangePercent"]) + ")" + EL
         passage = passage + "$" + quote_result["Range"].replace("- ", "- $") + " (" + str(quote_result["Volume"]) + "/" + str(quote_result["Turnover"]) + ")"+ EL
 
         icon_v2v = ""
@@ -156,7 +167,7 @@ def get_quote_message(code, region="US", simpleMode=True):
                  icon_v2v = u'\U0001F414'
             elif (float(quote_result["V2V"]) > 1.0):
                  icon_v2v = u'\U0001F424'
-            passage = passage + icon_v2v +  "V/AV " + "x" + quote_result["V2V"] + EL
+            passage = passage + icon_v2v +  "V/AV " + "x" + str(quote_result["V2V"]) + EL
       
         if ("52WeekHigh" in quote_result and "52WeekLow" in quote_result): 
             #print("[%s]" % quote_result["Range"])
@@ -201,12 +212,14 @@ def main():
     #quote = get_us_stock_quote('DFT')
     #for key, value in quote.items():
     #    print(key, ":", value)
-    print(get_quote_message('BABA',"US", True))
-    print(get_quote_message('MSFT',"US", True))
-    print(get_quote_message('SSW-G',"US", True))
+    print(get_quote_message('ABP',"US", True))
+    #print(get_quote_message('MSFT',"US", True))
+    #print(get_quote_message('SSW-G',"US", True))
     #print(get_quote_message('SNAP',"US", True))
     #print(get_quote_message('AMZN',"US", False))
-
+    #print(get_quote_message('ACFN',"US", False))
+    print(get_us_stock_quote("ACFN"))
+    print(get_us_stock_quote("ACGLO"))
     #print(get_quote_message('BRK.B',"US", False))
 
 

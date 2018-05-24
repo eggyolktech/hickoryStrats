@@ -78,7 +78,9 @@ class MacdStocCrossScanner(Strategy):
         # Create the set of short and long simple moving averages over the 
         # respective periods
         signals['close'] = self.bars['Close']
-        self.bars['Volume'] = self.bars['Volume'].replace('null', 0)
+        
+        self.bars['Volume'].fillna(0, inplace=True)
+        #self.bars['Volume'] = self.bars['Volume'].replace('null', 0)
         signals['vol'] = self.bars['Volume']
         
         #print("[" + self.symbol + "]")
@@ -353,6 +355,8 @@ def generate_scanner_result(symbol, period, datasrc='yahoo_direct'):
     
     try:
         bars = retrieve_bars_data(symbol, datasrc, start, end)
+    except ValueError:
+        return result
     except:
         logging.error(" Error retrieving code: " + symbol)
         logging.error(traceback.format_exc())
@@ -387,7 +391,7 @@ def generate_scanner_result(symbol, period, datasrc='yahoo_direct'):
     macd_high_x_result = None
     
     if(not mean_turnover == 0 and mean_turnover/1000000 < MIN_TURNOVER):
-        #print("Good luck next time...!")
+        print("Good luck next time...!")
         return result
     
     if(len(signals.ix[signals.stoch_positions == 1.0].index) > 0):    
@@ -400,7 +404,7 @@ def generate_scanner_result(symbol, period, datasrc='yahoo_direct'):
         
         if (difference < MONITOR_PERIOD):
             print(symbol + " " + period + ": [" + str(then) + ", " +  str(difference) + " days ago at Stoch, avg vol: [" + str(mean_turnover) + "]")
-            stoch_result =  "S" + str(difference)
+            stoch_result =  "S" + str(difference).replace(".0", "")
     
     lastmacd = signals.tail(1).signal_macd_x.iloc[0]
     lastclose = signals.tail(1).close.iloc[0]
@@ -420,20 +424,18 @@ def generate_scanner_result(symbol, period, datasrc='yahoo_direct'):
   
         if (difference < MONITOR_PERIOD):
             print(symbol + " " + period + ": [" + str(then) + ", " +  str(difference) + " days ago at MACD, avg turnover: [" + str(mean_turnover) + ", $" + str(lastclose) +  "]")
-            macd_result = "M" + str(difference)
+            macd_result = "M" + str(difference).replace(".0", "")
     else:
         stock_tech_db.update_stock_macd(symbol.replace(".HK","").zfill(5), "-", lastdiv)
 
     if (stoch_result and macd_result and (mean_turnover == 0 or mean_turnover/1000000>=MIN_TURNOVER)):
         chart_path = "" #generate_scanner_chart(symbol, period, bars, signals)[0]
         turnover = "$" + str('%.2f' % (mean_turnover/1000000)) + "m"
+        print(stoch_result)
+        print(macd_result)
         description = stoch_result.replace(".0", "") + ", " + macd_result.replace(".0","") + ", " + turnover + ", " + str('%.4f' % lastdiv)
-        if ("M1," in description or "S1, " in description):
+        if (macd_result in ["M0", "M1", "M2"] or stoch_result in ["S0", "S1", "S2"]):
             info_str = "" + symbol.replace(".HK", "") + " @<b>" + period[:1] + " [" + description + "]" + "</b>"
-            result.append(command + info_str)
-            result.append(chart_path)
-        elif ("M2," in description or "S2, " in description):
-            info_str = symbol.replace(".HK", "") + " @" + period[:1] + " [" + description + "]"
             result.append(command + info_str)
             result.append(chart_path)
         else:
@@ -647,10 +649,10 @@ if __name__ == "__main__":
         #'../data/list_USIndustryList.json',
         #'../data/list_IndexList.json',
         #'../data/list_ETFList.json',
-        '../data/list_HKEXList.json', 
+        #'../data/list_HKEXList.json', 
         '../data/list_USIndexList.json',
-        '../data/list_USETFList.json',
-        '../data/list_FXList.json'
+        #'../data/list_USETFList.json',
+        #'../data/list_FXList.json'
     ]
 
     # For Standard List
@@ -669,7 +671,7 @@ if __name__ == "__main__":
     #generate_scanner_result("DEXJPUS", "DAILY", 'fred')
     #generate_scanner_result("0144.HK", "DAILY")
     #generate_scanner_result("AUD=X", "DAILY")
-    #generate_scanner_result("1357.HK", "DAILY")
+    print(generate_scanner_result("7388.HK", "DAILY"))
 
     
     

@@ -28,7 +28,8 @@ def fdaysago(dateStr):
     return ('%.0f' % difference) + "d"
 
 def fpct(lcp):
-    
+   
+    lcp = str(lcp) 
     if (not lcp):
         return lcp
 
@@ -42,7 +43,7 @@ def fpct(lcp):
         change_pct = "+" + "%.2f" % float(lcp[:-1]) + "%"
         change_style = "color: green;"
     else:
-        change_pct = "%.2f" % float(lcp[:-1]) + "%"
+        change_pct = lcp
         change_style = ""
 
     return "<font style='%s'>%s</font>" % (change_style, change_pct)
@@ -222,6 +223,7 @@ def generate(region="HK"):
                 """
 
     for stock in stocks:    
+        
         #print(stock["_52WEEK_HIGH"])
         if (stock["_52WEEK_HIGH"] and (stock["LAST_CLOSE"] > stock["_52WEEK_HIGH"])):
             img_sup = "<img src='http://images.emojiterra.com/emojione/v2/512px/1f525.png' width='15' style='vertical-align: top'/>"
@@ -229,14 +231,16 @@ def generate(region="HK"):
             img_sup = ""
 
         if (region == "US"):
-            surl = "https://finance.google.com/finance?q="
+           surl = "http://money.cnn.com/quote/profile/profile.html?symb="
         else:
             surl = "http://aastocks.com/tc/stocks/analysis/company-fundamental/?symbol="
-
         if (options.is_option_code(stock["CODE"])):
             img_option = "<img src='https://33qpzx1dk8tt1qlds735ez93-wpengine.netdna-ssl.com/wp-content/uploads/2016/10/op-256x256.png' width='15' style='vertical-align: top'/>"
         else:
             img_option = ""
+
+        if (region == "US"):
+            stock["stockname"] = " ".join(stock["stockname"].split()[:2])
 
         name_text = "<a href='" + surl + stock["CODE"] + "' target='_blank'>" + stock["stockname"] + "</a>" + img_sup + img_option
     
@@ -265,13 +269,16 @@ def generate(region="HK"):
         else:
             macd_div = "-"
 
-        if (region == "US"):
-            stock["MKT_CAP"] = 0.00
+        if (region == "US" and stock["MARKET_CAPITAL"] == 0):
+            continue
+        elif (region == "US"):
+            stock["MKT_CAP"] = stock["MARKET_CAPITAL"]
 
         if (stock["MACD_X_OVER_DATE"] and not stock["MACD_X_OVER_DATE"] == "-"):
             macd_text = fdaysago(stock["MACD_X_OVER_DATE"]) + " (" + macd_div + ")"
         else:
             macd_text = macd_text + " (" + macd_div + ")"
+        print("making row for code[%s]" % stock["CODE"] + "/" + str(stock["MKT_CAP"]))
         row_text = """<tr style='""" + style_bg + """'>
                       <td><a name='%s'/><a href="/streaming.html?code=%s" target="_blank">%s</a></td>
                       <td class='text-nowrap'>%s</td><td>%s</td><td>%s</td>

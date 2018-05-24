@@ -18,7 +18,10 @@ config = config_loader.load()
 period = "ALL"
 
 def fpct(lcp):
-    
+
+    lcp = str(lcp)
+    #print(lcp[1:-1])
+    #print(lcp[:-1])
     if (not lcp or lcp == "N/A"):
         return lcp
 
@@ -29,7 +32,7 @@ def fpct(lcp):
         change_pct = "-" + "%.2f" % float(lcp[1:-1]) + "%"
         change_style = "color: red;"
     else:
-        change_pct = "%.2f" % float(lcp[:-1]) + "%"
+        change_pct = lcp
         change_style = ""
 
     return "<font style='%s'>%s</font>" % (change_style, change_pct)
@@ -190,7 +193,7 @@ def generate():
 
                         img_sup_3 = ""
  
-                        name_text = "<a href='https://finance.google.com/finance?q=" + stock["code"] + "' target='_blank'>" + stock["name"] + "</a>" + img_sup + img_sup_2 + img_sup_3
+                        name_text = "<a href='http://money.cnn.com/quote/profile/profile.html?symb=" + stock["code"] + "' target='_blank'>" + " ".join(stock["name"].split()[:2]) + "</a>" + img_sup + img_sup_2 + img_sup_3
                         row_text = """<tr style='""" + style_bg + """'>
                                         <td><a href="/streaming.html?code=%s" target="_blank">%s</a></td>
                                         <td>%s</td><td>%s</td>
@@ -207,7 +210,7 @@ def generate():
                                         <td>%s</td><td>%s</td><td>%s</td><td>%s</td>
                                         <td>%s</td><td>%s</td><td>%s</td><td>%s</td>
                                         <td>%s</td><td>%s</td><td>%s</td><td>%s</td>
-                                        </tr>""" % (stock["code"], stock["code"],  stock["name"], stock["LAST_CLOSE"], fpct(lcp), vol_ratio, stock["PE"], stock["YIELD"], fnum(stock["_1MONTH_CHANGE"]), fnum(stock["_3MONTH_CHANGE"]), fnum(stock["_52WEEK_CHANGE"]), fnum(stock["_1MONTH_HSI_RELATIVE"]), fnum(stock["_3MONTH_HSI_RELATIVE"]), fnum(stock["_52WEEK_HSI_RELATIVE"]), su.rf2s(stock["MARKET_CAPITAL"]), stock["_52WEEK_HIGH"], stock["_52WEEK_LOW"], su.rf2s(stock["_1MONTH_AVG_VOL"]), su.rf2s(stock["_3MONTH_AVG_VOL"]), fnum(stock["_10_DAY_MA"]), fnum(stock["_50_DAY_MA"]), fnum(stock["_90_DAY_MA"]), fnum(stock["_250_DAY_MA"]), stock["_14_DAY_RSI"])
+                                        </tr>""" % (stock["code"], stock["code"],  " ".join(stock["name"].split()[:2]), stock["LAST_CLOSE"], fpct(lcp), vol_ratio, stock["PE"], stock["YIELD"], fnum(stock["_1MONTH_CHANGE"]), fnum(stock["_3MONTH_CHANGE"]), fnum(stock["_52WEEK_CHANGE"]), fnum(stock["_1MONTH_HSI_RELATIVE"]), fnum(stock["_3MONTH_HSI_RELATIVE"]), fnum(stock["_52WEEK_HSI_RELATIVE"]), su.rf2s(stock["MARKET_CAPITAL"]), stock["_52WEEK_HIGH"], stock["_52WEEK_LOW"], su.rf2s(stock["_1MONTH_AVG_VOL"]), su.rf2s(stock["_3MONTH_AVG_VOL"]), fnum(stock["_10_DAY_MA"]), fnum(stock["_50_DAY_MA"]), fnum(stock["_90_DAY_MA"]), fnum(stock["_250_DAY_MA"]), stock["_14_DAY_RSI"])
 
                         stk_overlay_html = stk_overlay_html + row_text_overlay
  

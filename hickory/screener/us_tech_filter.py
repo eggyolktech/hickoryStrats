@@ -55,7 +55,7 @@ def manageStockTech(code, idm):
     end = datetime.today()
     randays = random.randint(1,20)
     start = end - timedelta(days=(1*400 + randays))
-    #print("Code: [" + code + "]")
+    print("Code: [" + code + "]")
     bars = webdata.DataReader(code, "yahoo_direct", start, end)
     #print(code + " ---------- " + str(bars))
 
@@ -213,7 +213,10 @@ def generate_TECH_MT(num_workers=1):
     c = conn.cursor()
     c.execute("select * from stocks_us order by code asc")
     rows = c.fetchall()
-    idm = get_index_metrics()    
+    idm = get_index_metrics()   
+    idm = [1,2,3]   
+
+    webdata.reset_cookies_and_crumb()
 
     # We can use a with statement to ensure threads are cleaned up promptly
     with concurrent.futures.ThreadPoolExecutor(max_workers=num_workers) as executor:
@@ -267,7 +270,7 @@ def main(args):
     if (not os.name == 'nt'):
         mem_util.set_max_mem(50)
     start_time = time.time()
-    NO_OF_WORKER = 4 
+    NO_OF_WORKER = 1 
 
     if (len(args) > 1 and args[1] == "gen_tech"):
         generate_TECH_MT(NO_OF_WORKER)

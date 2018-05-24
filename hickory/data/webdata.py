@@ -10,7 +10,6 @@ import traceback
 import logging
 import io
 from pandas_datareader import data as web, wb
-
 from bs4 import BeautifulSoup
 import csv
 import os
@@ -64,6 +63,9 @@ def init_cookies_and_crumb():
 
     yahoo_session_loader.load()
 
+def reset_cookies_and_crumb():
+
+    yahoo_session_loader.reset()
 
 def retrieve_bars_data_from_yahoo(symbol, datasrc, start, end):
 
@@ -88,7 +90,7 @@ def retrieve_bars_data_from_yahoo(symbol, datasrc, start, end):
         url = 'https://query1.finance.yahoo.com/v7/finance/download/'  + symbol + '?period1=' + start_epoch + '&period2=' + end_epoch + '&interval=1d&events=history&crumb=' + crumb
         
         response = requests.get(url, cookies=cookies)
-        #print("url: " + url);
+        print("url: " + url);
         #print(response.content.decode("utf-8"))
 
         df = pd.read_csv(io.StringIO(response.content.decode("utf-8")), header=0, sep=',', index_col=0)
@@ -188,11 +190,14 @@ def main():
     start = end - timedelta(days=(1*400))
 
     #bars = DataReader("0923.HK", "yahoo_direct", start, end)
-    #bars = DataReader("ACTL", "yahoo_direct", start, end)
-    #print(bars.tail(200))
+    
+    for code in ["AABA", "AA", "AAC", "A", "AAL", "AAMC"]:
+        bars = DataReader(code, "yahoo_direct", start, end)
+        #if (not bars == None):
+        print(bars.tail())
  
-    bars = DataReader("0700.HK", "google", start, end)
-    print(bars.tail(20))
+    #bars = DataReader("0700.HK", "yahoo_direct", start, end)
+    #print(bars.tail(20))
  
 if __name__ == "__main__":
     main()                

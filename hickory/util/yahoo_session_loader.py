@@ -46,14 +46,32 @@ class YahooFinanceLoader:
     def getCrumb(self):
         return YahooFinanceLoader.__crumb
 
+    def resetSingleton():
+        YahooFinanceLoader.__single = None
+
+def reset():
+    print("YahooFinanceLoader.resetSingleton()....")
+    YahooFinanceLoader.resetSingleton()
+
 def load():
 
     singleton = YahooFinanceLoader.getSingleton()
-    
     return singleton
 
 def main():
 
+    session = load()
+    print(session.getCookies())
+    print(session.getCrumb())
+    session = load()
+    print(session.getCookies())
+    print(session.getCrumb())
+    
+    reset()
+    session = load()
+    print(session.getCookies())
+    print(session.getCrumb())
+    
     session = load()
     print(session.getCookies())
     print(session.getCrumb())
